@@ -9,7 +9,8 @@ import tensorflow as tf
 from keras.layers import Input
 from keras.layers import (
     Conv2D,
-    GlobalAveragePooling2D
+    GlobalAveragePooling2D,
+    Activation
 )
 from keras.models import Model
 
@@ -28,8 +29,9 @@ def build_a_model(input_shape, num_classes=1):
 
     x = Conv2D(filters=num_classes, kernel_size=1, strides=1)(x)
     logits = GlobalAveragePooling2D()(x)
+    sigmoid = Activation('sigmoid')(logits)
 
-    model = Model(inputs=input_image, outputs=logits)
+    model = Model(inputs=input_image, outputs=sigmoid)
 
     return model
     

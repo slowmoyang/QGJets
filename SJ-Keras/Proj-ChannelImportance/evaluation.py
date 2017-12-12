@@ -26,8 +26,6 @@ from keras.utils import multi_gpu_model
 from models import add_an_sigmoid_layer
 from pipeline import DataLodaer
 
-#from custom_losses import binary_cross_entropy_with_logits
-#from custom_metrics import accuracy_with_logits
 from meters import ROCMeter, OutHist
 from utils import (
     get_log_dir,
@@ -42,10 +40,8 @@ def evaluate(saved_model_path,
     # TEST
     logger = Logger(log_dir.path, "READ")
 
-    model_logit = load_model(saved_model_path)
-    model_sigmoid = add_an_sigmoid_layer(model_logit)
-
-    model = multi_gpu_model(model_sigmoid, 2)
+    model = load_model(saved_model_path)
+    model = multi_gpu_model(model, 2)
 
     out_hist = OutHist(
         dpath=log_dir.output_histogram.path,

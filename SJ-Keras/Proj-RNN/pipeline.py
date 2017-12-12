@@ -25,6 +25,9 @@ class SeqDataLoader(object):
         
         self.root_file = ROOT.TFile(path, "READ")
         self.tree = self.root_file.Get(tree_name)
+        if self.tree == ROOT.MakeNullPointer():
+            print("ERROR:", self.root_file, "contains no 'jet' tree")
+            exit(1)
 
         if maxlen is None:
             self.maxlen = int(self.tree.GetMaximum("n_dau"))
@@ -180,6 +183,9 @@ class DataLoader(object):
         
         self.root_file = ROOT.TFile(path, "READ")
         self.tree = self.root_file.Get(tree_name)
+        if self.tree == ROOT.MakeNullPointer():
+            print("ERROR:", self.root_file, "contains no '", tree_name, "' tree")
+            exit(1)
 
         if maxlen is None:
             self.maxlen = int(self.tree.GetMaximum("n_dau"))

@@ -7,33 +7,22 @@ import os.path
 
 import argparse
 from datetime import datetime
-from tqdm import tqdm
-#import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
-
-#import tensorflow as tf
 
 import keras
 from keras.models import load_model
 from keras.utils import multi_gpu_model 
 
-#import keras.backend as K
-
 from models.layer import add_an_sigmoid_layer
-#from pipeline import SeqDataLoader
 from pipeline import DataLoader
 
 sys.path.append("..")
-from custom_losses import binary_cross_entropy_with_logits
-from custom_metrics import accuracy_with_logits
 from meters import ROCMeter, OutHist
 from utils import (
     get_log_dir,
     get_saved_model_paths,
-    Logger
-)
-
+    Logger)
 
 
 def evaluate(saved_model_path,
@@ -42,14 +31,7 @@ def evaluate(saved_model_path,
 
     logger = Logger(log_dir.path, "READ")
 
-    model_logit = load_model(
-        filepath=saved_model_path,
-        custom_objects={
-            "binary_cross_entropy_with_logits": binary_cross_entropy_with_logits,
-            "accuracy_with_logits": accuracy_with_logits,
-        },
-    )
-    model = add_an_sigmoid_layer(model_logit, "prediction")
+    model = load_model(filepath=saved_model_path)
 
     out_hist = OutHist(
         dpath=log_dir.output_histogram.path,
@@ -78,8 +60,7 @@ def evaluate(saved_model_path,
         dpath=log_dir.roc.path,
         step=step,
         title="Test on Dijet",
-        prefix="dijet_"
-    )
+        prefix="dijet_")
 
     for x_daus, x_glob, y in test_dijet_loader:
         preds = model.predict_on_batch([x_daus, x_glob])
@@ -100,8 +81,7 @@ def evaluate(saved_model_path,
         dpath=log_dir.roc.path,
         step=step,
         title="Test on Z+jet",
-        prefix="zjet_"
-    )
+        prefix="zjet_")
 
     for x_daus, x_glob, y in test_zjet_loader:
         preds = model.predict_on_batch([x_daus, x_glob])
@@ -117,7 +97,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-	    '--log_dir', type=str, required=True,
+        '--log_dir', type=str, required=True,
     	help='the directory path of dataset')
 
     args = parser.parse_args()

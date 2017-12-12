@@ -21,13 +21,10 @@ from keras.utils import multi_gpu_model
 
 import keras.backend as K
 
-from pipeline import DataLodaer
-
-from models import build_a_model
+from pipeline import DataLoader
 
 sys.path.append("..")
-from keras4jet.losses import binary_cross_entropy_with_logits
-from keras4jet.metrics import accuracy_with_logits
+from keras4jet.models import build_a_model
 from keras4jet.meters import Meter
 from keras4jet.utils import (
     get_log_dir,
@@ -39,14 +36,18 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--train_data", type=str, default="dijet")
-	'--log_dir', type=str,
-	default='./logs/{name}-{date}'.format(
-        name="{name}", date=datetime.today().strftime("%Y-%m-%d_%H-%M-%S")),
+    parser.add_argument("--directory", type=str, default="../../SJ-JetImage/image33x33/")
+    parser.add_argument("--model", type=str, default="resnet")
+    parser.add_argument('--log_dir', type=str,
+	                default='./logs/{name}-{date}'.format(
+                            name="{name}",
+                            date=datetime.today().strftime("%Y-%m-%d_%H-%M-%S")))
 
     parser.add_argument("--num_epochs", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=len(get_available_gpus()))
     parser.add_argument("--train_batch_size", type=int, default=500)
     parser.add_argument("--val_batch_size", type=int, default=500)
+    parser.add_argument("--multi-gpu", default=False, action='store_true', dest='multi_gpu')
 
     # Hyperparameter
     parser.add_argument("--lr", type=float, default=0.001)
@@ -58,26 +59,27 @@ def main():
     args = parser.parse_args()
 
     if args.train_data == "dijet":
-        train_data = "../data/FastSim/dijet/training_dijet_466554_prep.root"
-        val_dijet_data = "../data/FastSim/dijet/test_dijet_after_dijet_186880_prep.root"
-        val_zjet_data = "../data/FastSim/dijet/test_zjet_after_dijet_176773_prep.root"
+        train_data = args.directory+"/dijet_train.root"
+        val_dijet_data = args.directory+"/dijet_test_after_dijet.root"
+        val_zjet_data = args.directory+"/z_jet_test_after_dijet.root"
     elif args.train_data == "zjet":
-        train_data = "../data/FastSim/zjet/training_zjet_440168_prep.root"
-        val_dijet_data = "../data/FastSim/zjet/test_dijet_after_zjet_186880_prep.root"
-        val_zjet_data = "../data/FastSim/zjet/test_zjet_after_zjet_176773_prep.root"
+        train_data = args.directory+"/z_jet_train.root"
+        val_dijet_data = args.directory+"/dijet_test_after_zjet.root"
+        val_zjet_data = args.directory+"/z_jet_test_after_zjet.root"
     else:
         raise ValueError("")
 
+    if '{name}' in args.log_dir: args.log_dir = args.log_dir.format(name=args.model)
     log_dir = get_log_dir(path=args.log_dir, creation=True)
 
-    logger = Logger(dpath=log_dir.path, "WRITE")
+    logger = Logger(dpath=log_dir.path, mode="WRITE")
     logger.get_args(args)
     logger["train_data"] = train_data
-    logger["val_zjet_data"] = val_dijet_data
+    logger["val_zjet_data"] = val_zjet_data
     logger["val_dijet_data"] = val_dijet_data
 
     # data loader
-    train_loader = DataLodaer(
+    train_loader = DataLoader(
         path=train_data,
         batch_size=args.train_batch_size,
         cyclic=False)
@@ -85,27 +87,28 @@ def main():
     steps_per_epoch = np.ceil( len(train_loader) / train_loader.batch_size ).astype(int)
     total_step = args.num_epochs * steps_per_epoch
 
-    val_dijet_loader = DataLodaer(
+    val_dijet_loader = DataLoader(
         path=val_dijet_data,
         batch_size=args.val_batch_size,
         cyclic=True)
 
-    val_zjet_loader = DataLodaer(
+    val_zjet_loader = DataLoader(
         path=val_zjet_data,
         batch_size=args.val_batch_size,
         cyclic=True)
 
 
-    loss = binary_cross_entropy_with_logits
+    loss = 'binary_crossentropy'
     optimizer = optimizers.Adam(lr=args.lr)
-    metric_list = [accuracy_with_logits]
+    metric_list = ['accuracy']
 
     # build a model and compile it
-    _model = build_a_model(
-        model_name=args.model,
-        **train_loader.get_shapes())
+    _model = build_a_model(model_name=args.model, input_shape=train_loader._image_shape)
 
-    model = multi_gpu_model(_model, gpus=args.num_gpus) 
+    if args.multi_gpu:
+        model = multi_gpu_model(_model, gpus=args.num_gpus)
+    else:
+        model = _model
 
 
     model.compile(
@@ -193,6 +196,9 @@ def main():
             model.train_on_batch(x=x_train, y=y_train)
             step += 1
 
+    filepath = os.path.join(log_dir.saved_models.path,
+                            "model_final.h5")
+    _model.save(filepath)
     print("Training is over! :D")
     meter.finish()
     logger.finish()

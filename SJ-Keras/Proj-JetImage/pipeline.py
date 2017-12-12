@@ -107,6 +107,9 @@ class OldDataLoader(object):
         
         self.root_file = ROOT.TFile(path, "READ")
         self.tree = self.root_file.Get("jet")
+        if self.tree == ROOT.MakeNullPointer():
+            print("ERROR:", self.root_file, "contains no 'jet' tree")
+            exit(1)
         
         self._start = 0
         

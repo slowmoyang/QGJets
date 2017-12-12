@@ -65,7 +65,8 @@ class wkiter(object):
         self.qEnd.append(int(self.qEntries[i]*end))
         self.gEnd.append(int(self.gEntries[i]*end))
         self.qnum+=self.qEnd[i]-self.qBegin[i]
-        self.gnum+=self.gEnd[i]-self.qBegin[i]
+        self.gnum+=self.gEnd[i]-self.gBegin[i]
+
       self.a=self.gBegin[0]
       self.b=self.qBegin[0]
       self.aq=self.gBegin[self.frat]
@@ -156,9 +157,10 @@ class wkiter(object):
       #a=0
       #for i in range(self.friend):
       #  a+=self.qEnd[i]-self.qBegin[i]+self.gEnd[i]-self.qBegin[i]
-      return int((self.qnum+self.gnum)/self.batch_size*0.99)
+      return int((self.qnum+self.gnum)/self.batch_size*0.80)
     else:
-      return int((self.qEnd-self.qBegin+self.gEnd-self.qBegin)/self.batch_size*0.99)
+      return int((self.qEnd-self.qBegin+self.gEnd-self.qBegin)/self.batch_size*0.80)
+
   def next(self):
     while self.endfile==0:
       arnum=self.arnum
@@ -294,6 +296,146 @@ class wkiter(object):
         data=np.array(jetset)
       label=np.array(labels)
       yield data, label
+    #else:
+      #if(self.istrain==1):
+      #  print "\n",datetime.datetime.now()  
+      #raise StopIteration
+
+  def test(self):
+    while self.endfile==0:
+      arnum=self.arnum
+      jetset=[]
+      variables=[]
+      labels=[]
+      rand=random.choice(self.rat)
+      if(self.friend!=0 and self.zboson==0 and self.istrain==1):
+        rand=0.4
+      if(self.friend!=0 and self.zboson==0 and self.istrain==0):
+        rand=0.31354286
+      if(self.friend!=0 and self.zboson==1):
+        rand=0.526
+      if(self.friend!=0 and self.zboson==0 and self.istrain==1 and self.w==1):
+        rand=0.37
+      if(self.friend!=0):
+        rand=self.gnum/1./(self.qnum+self.gnum)
+      for i in range(self.batch_size):
+        if(self.friend!=0):
+          if(self.w==0):
+            if(random.random()<rand):
+              self.gjet[self.gf].GetEntry(self.a)
+              self.a+=1
+              jetset.append(np.array(self.gim[self.gf]).reshape((3,2*arnum+1,2*arnum+1)))
+              labels.append([1,0])
+              if(self.varbs==1):
+                variables.append([self.gjet[self.gf].ptD,self.gjet[self.gf].axis1,self.gjet[self.gf].axis2,self.gjet[self.gf].nmult,self.gjet[self.gf].cmult])
+              if(self.a>=self.gEnd[self.gf]):
+                self.gf+=1
+                if(self.gf==self.friend):
+                  self.endfile=1
+                  self.gf=0
+                self.a=self.gBegin[self.gf]
+            else:
+              self.qjet[self.qf].GetEntry(self.b)
+              self.b+=1
+              jetset.append(np.array(self.qim[self.qf]).reshape((3,2*arnum+1,2*arnum+1)))
+              labels.append([0,1])
+              if(self.varbs==1):
+                variables.append([self.qjet[self.qf].ptD,self.qjet[self.qf].axis1,self.qjet[self.qf].axis2,self.qjet[self.qf].nmult,self.qjet[self.qf].cmult])
+              if(self.b>=self.qEnd[self.qf]):
+                self.qf+=1
+                if(self.qf==self.friend):
+                  self.endfile=1
+                  self.qf=0
+                self.b=self.gBegin[self.qf]
+          ####-----------
+	  else:
+            if(random.random()<rand):
+              if(random.random()<self.ratt):
+                self.gjet[self.gf].GetEntry(self.a)
+                self.a+=1
+                jetset.append(np.array(self.gim[self.gf]).reshape((3,2*arnum+1,2*arnum+1)))
+                labels.append([1,0])
+                if(self.varbs==1):
+                  variables.append([self.gjet[self.gf].ptD,self.gjet[self.gf].axis1,self.gjet[self.gf].axis2,self.gjet[self.gf].nmult,self.gjet[self.gf].cmult])
+                if(self.a>=self.gEnd[self.gf]):
+                  self.gf+=1
+                  if(self.gf==self.frat):
+                    self.endfile=1
+                    self.gf=0
+                  self.a=self.gBegin[self.gf]
+              else:
+                self.qjet[self.gq].GetEntry(self.aq)
+                self.aq+=1
+                jetset.append(np.array(self.gim[self.gq]).reshape((3,2*arnum+1,2*arnum+1)))
+                labels.append([1,0])
+                if(self.varbs==1):
+                  variables.append([self.qjet[self.gq].ptD,self.qjet[self.gq].axis1,self.qjet[self.gq].axis2,self.qjet[self.gq].nmult,self.qjet[self.gq].cmult])
+                if(self.aq>=self.gEnd[self.gq]):
+                  self.gq+=1
+                  if(self.gq==self.friend):
+                    self.endfile=1
+                    self.gq=self.frat
+                  self.aq=self.gBegin[self.gq]
+            else:
+              if(random.random()<self.ratt):
+                self.qjet[self.qf].GetEntry(self.b)
+                self.b+=1
+                jetset.append(np.array(self.qim[self.qf]).reshape((3,2*arnum+1,2*arnum+1)))
+                labels.append([0,1])
+                if(self.varbs==1):
+                  variables.append([self.qjet[self.qf].ptD,self.qjet[self.qf].axis1,self.qjet[self.qf].axis2,self.qjet[self.qf].nmult,self.qjet[self.qf].cmult])
+                if(self.b>=self.qEnd[self.qf]):
+                  self.qf+=1
+                  if(self.qf==self.frat):
+                    self.endfile=1
+                    self.qf=0
+                  self.b=self.gBegin[self.qf]
+              else:
+                self.gjet[self.qg].GetEntry(self.bg)
+                self.bg+=1
+                jetset.append(np.array(self.qim[self.qg]).reshape((3,2*arnum+1,2*arnum+1)))
+                labels.append([0,1])
+                if(self.varbs==1):
+                  variables.append([self.gjet[self.qg].ptD,self.gjet[self.qg].axis1,self.gjet[self.qg].axis2,self.gjet[self.qg].nmult,self.gjet[self.qg].cmult])
+                if(self.bg>=self.qEnd[self.qg]):
+                  self.qg+=1
+                  if(self.qg==self.friend):
+                    self.endfile=1
+                    self.qg=self.frat
+                  self.bg=self.gBegin[self.qg]
+
+
+        else:
+          if(random.random()<0.5):
+          #if(random.random()<rand):
+            self.gjet.GetEntry(self.a)
+            self.a+=1
+            jetset.append(np.array(self.gim).reshape((3,2*arnum+1,2*arnum+1)))
+            labels.append([1,0])
+            if(self.a>=self.gEnd):
+              self.a=self.gBegin
+              self.endfile=1
+          else:
+            self.qjet.GetEntry(self.b)
+            self.b+=1
+            jetset.append(np.array(self.qim).reshape((3,2*arnum+1,2*arnum+1)))
+            labels.append([0,1])
+            if(self.b>=self.qEnd):
+              self.b=self.gBegin
+              self.endfile=1
+          #if(rand<0.5):
+          #    labels.append(0)
+          #else:
+          #    labels.append(1)
+          #if(self.endcut==0 and self.ent>=self.End):
+              #self.ent=self.Begin
+              #self.endfile=1
+      if(self.varbs==1):
+        data=[np.array(jetset),np.array(variables)]
+      else:
+        data=np.array(jetset)
+      label=np.array(labels)
+      return [data,label]
     #else:
       #if(self.istrain==1):
       #  print "\n",datetime.datetime.now()  

@@ -2,13 +2,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import models.vggnet
-import models.resnet
-import models.densenet
-import models.seresnet
-import models.sedensnet
+# import models.image.vggnet
+# import models.resnet
+# import models.densenet
+# import models.seresnet
+# import models.sedensnet
 
-import models.capsnet
+# import models.capsnet
 
 __all__ = []
 

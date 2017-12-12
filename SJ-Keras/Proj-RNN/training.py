@@ -25,22 +25,20 @@ import keras.backend as K
 from pipeline import DataLoader
 # from pipeline import SeqDataLoader as DataLoader
 
-from models import build_a_model
-
 sys.path.append("..")
-from keras4jet.losses import binary_cross_entropy_with_logits
-from keras4jet.metrics import accuracy_with_logits
+from keras4jet.models import build_a_model
 from keras4jet.meters import Meter
-from utils import (
+from keras4jet.utils import (
     get_log_dir,
     get_available_gpus,
     Logger
 )
 
-def main():
+if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--model", type=str, default="model_ak4")
+    parser.add_argument("--model", type=str, default="ak4")
+    parser.add_argument("--directory", type=str, default="../../SJ-JetImage/step5/")
     parser.add_argument("--train_data", type=str, default="dijet")
     parser.add_argument(
 	    '--log_dir', type=str,
@@ -63,13 +61,12 @@ def main():
 
     args = parser.parse_args()
 
-    train_data="../../Data/FastSim_pt_100_500/{}_train.root".format(args.train_data)
-    val_dijet_data="../../Data/FastSim_pt_100_500/dijet_test.root"
-    val_zjet_data="../../Data/FastSim_pt_100_500/zjet_test.root"
+    train_data = args.directory+"/dijet_train.root"
+    val_dijet_data = args.directory+"/dijet_test.root"
+    val_zjet_data = args.directory+"/z_jet_test.root"
 
-    log_dir = get_log_dir(
-        path=args.log_dir.format(name=args.model,
-        creation=True)
+    if '{name}' in args.log_dir: args.log_dir = args.log_dir.format(name=args.model)
+    log_dir = get_log_dir(path=args.log_dir,creation=True)
 
     logger = Logger(log_dir.path, "WRITE")
     logger.get_args(args)
@@ -78,9 +75,9 @@ def main():
     logger["val_zjet_data"] = val_zjet_data
 
 
-    loss = binary_cross_entropy_with_logits
+    loss = 'binary_crossentropy'
     optimizer = optimizers.Adam(lr=args.lr)
-    metric_list = [accuracy_with_logits]
+    metric_list = ['accuracy']
 
     # data loader
     train_loader = DataLoader(
@@ -112,9 +109,9 @@ def main():
 
 
     model.compile(
-        loss=binary_cross_entropy_with_logits,
+        loss=loss,
         optimizer=optimizers.Adam(lr=1e-2),
-        metrics=[accuracy_with_logits])
+        metrics=['accuracy'])
 
 
     # Meter
@@ -204,15 +201,7 @@ def main():
     end_time = time.time()
     logger["training_time"] = end_time - start_time
     print("Training is over! :D")
+    filepath = os.path.join(log_dir.saved_models.path, "model_final.h5")
+    model.save(filepath)
     meter.finish()
     logger.finish()
-    
-
-            
-
-
-
-
-
-if __name__ == "__main__":
- main()

@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys.path
+import sys
 import os.path
 
 import matplotlib
@@ -21,12 +21,10 @@ from keras.utils import multi_gpu_model
 
 import keras.backend as K
 
-from pipeline import DataLodaer
+from pipeline import DataLoader
 
 sys.path.append("..")
 from keras4jet.models.image.resnet import build_a_model
-from keras4jet.losses import binary_cross_entropy_with_logits
-from keras4jet.metrics import accuracy_with_logits
 from keras4jet.meters import Meter
 from keras4jet.utils import (
     get_log_dir,
@@ -42,7 +40,7 @@ def main():
     parser.add_argument(
         '--log_dir', type=str,
 	    default='./logs/{name}-{date}'.format(
-        name="{name}", date=datetime.today().strftime("%Y-%m-%d_%H-%M-%S")),
+        name="name", date=datetime.today().strftime("%Y-%m-%d_%H-%M-%S")))
 
     parser.add_argument("--num_epochs", type=int, default=10)
     parser.add_argument("--num_gpus", type=int, default=len(get_available_gpus()))
@@ -61,10 +59,11 @@ def main():
 
     args = parser.parse_args()
 
-    data_dir = "../Data/FastSim_pt_100_500"
+    data_dir = "../../SJ-JetImage/images33x33/"
     if args.train_data == "dijet":
         train_data = os.path.join(data_dir, "")
     elif args.train_data == "zjet":
+        train_data = os.path.join(data_dir, "")
     else:
         raise ValueError("")
 
@@ -72,7 +71,7 @@ def main():
         path=args.log_dir.format(name=args.channel),
         creation=True)
 
-    logger = Logger(dpath=log_dir.path, "WRITE")
+    logger = Logger(dpath=log_dir.path, mode="WRITE")
     logger.get_args(args)
     logger["train_data"] = train_data
     logger["val_zjet_data"] = val_dijet_data
@@ -101,14 +100,14 @@ def main():
         cyclic=True)
 
     # build a model
-    _model = build_a_model(input_shape
+    _model = build_a_model(input_shape)
     model = multi_gpu_model(_model, gpus=args.num_gpus) 
 
 
     # Define 
-    loss = binary_cross_entropy_with_logits
+    loss = 'binary_crossentropy'
     optimizer = optimizers.Adam(lr=args.lr)
-    metrics = [accuracy_with_logits]
+    metrics = ['accuracy']
 
     model.compile(
         loss=loss,
@@ -189,14 +188,14 @@ def main():
         x="step",
         ys=[(tr_acc_, "Training Acc on {}"),
             ("val_acc_dijet", "Validation on Dijet"),
-            ("val_acc_zjet", "Validation on Z+jet")]
+            ("val_acc_zjet", "Validation on Z+jet")],
         title="Accuracy", xaxis="Step", yaxis="Accuracy")
 
     meter.prepare(
         x="step",
         ys=[(tr_loss_name, "Training Loss os {}"),
             ("val_acc_dijet", "Validation Loss on Dijet"),
-            ("val_acc_zjet", "Validation Loss on Z+jet")]
+            ("val_acc_zjet", "Validation Loss on Z+jet")],
         title="Loss", xaxis="Step", yaxis="Accuracy")
 
     meter.finish()

@@ -63,13 +63,13 @@ def build_a_model(input0_shape, input1_shape):
     x = dense_block(x, 100)
     x = dense_block(x, 100)
 
-    # Output: logit
-    logit = Dense(units=1)(x)
+    # Output: sigmoid
+    sigmoid = Dense(units=1, activation='sigmoid')(x)
 
     # Create model.
     model = Model(
         inputs=[input_daus, input_glob],
-        outputs=logit,
+        outputs=sigmoid,
         name="AK4Net")
     return model
 

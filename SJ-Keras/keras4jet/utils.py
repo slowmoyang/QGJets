@@ -14,7 +14,7 @@ class Directory(object):
         self.path = path
         self._creation = creation
         if self._creation:
-            os.mkdir(self.path)
+            os.makedirs(self.path)
 
     def make_subdir(self, name):
         path = os.path.join(self.path, name)
