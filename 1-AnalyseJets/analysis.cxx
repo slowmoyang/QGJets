@@ -55,9 +55,25 @@ struct cluster {
 bool isBalanced(TClonesArray * gen_jets);
 bool passZjets(TClonesArray * jets, TClonesArray * muons, TClonesArray * electrons, int &nGoodJets);
 
-void fillDaughters(Jet *jet, float &leading_dau_pt, float& leading_dau_eta,
-		   std::vector<float> &dau_pt, std::vector<float> &dau_deta, std::vector<float> &dau_dphi,
-		   std::vector<int> &dau_charge, std::vector<int> &dau_ishadronic, int& nmult, int& cmult);
+void fillDaughters(
+    Jet *jet,
+    float &leading_dau_pt,
+    float& leading_dau_eta,
+	std::vector<float> &dau_pt,
+    std::vector<float> &dau_deta,
+    std::vector<float> &dau_dphi,
+	std::vector<int> &dau_charge,
+    std::vector<int> &dau_ishadronic,
+    std::vector<float> &dau_eemfrac,
+    std::vector<float> &dau_ehadfrac,
+    std::vector<int> &dau_pid,
+    std::vector<int> &dau_istrack,
+
+    int& nmult,
+    int& cmult);
+
+
+
 void fillDaughters_HADMERGE(Jet *jet, float &leading_dau_pt, float& leading_dau_eta,
 			    std::vector<float> &dau_pt, std::vector<float> &dau_deta, std::vector<float> &dau_dphi,
 			    std::vector<int> &dau_charge, std::vector<int> &dau_ishadronic, int& nmult);
@@ -251,6 +267,12 @@ int main(int argc, char *argv[])
   BranchVF(test);
   BranchVI(dau_charge);
   BranchVI(dau_ishadronic);
+  /////////////////////
+  BranchVF(dau_eemfrac);
+  BranchVF(dau_ehadfrac);
+  BranchVI(dau_pid);
+  BranchVI(dau_istrack);
+  ///////////////////////
   BranchI(n_dau);
   BranchO(matched);
   BranchO(balanced);
@@ -449,14 +471,31 @@ int main(int argc, char *argv[])
       dau_dphi.clear();
       dau_charge.clear();
       dau_ishadronic.clear();
+      dau_eemfrac.clear();
+      dau_ehadfrac.clear();
+      dau_pid.clear();
+      dau_istrack.clear();
       test.clear();
 
       if (doEcalCl)
-	fillDaughter_EcalCluster(jet, leading_dau_pt, leading_dau_eta, dau_pt, dau_deta, dau_dphi, dau_charge, dau_ishadronic, nmult, cmult, test);
+	      fillDaughter_EcalCluster(jet, leading_dau_pt, leading_dau_eta, dau_pt, dau_deta, dau_dphi, dau_charge, dau_ishadronic, nmult, cmult, test);
       else if (doHadMerge)
-	fillDaughters_HADMERGE(jet, leading_dau_pt, leading_dau_eta, dau_pt, dau_deta, dau_dphi, dau_charge, dau_ishadronic, nmult);
+	      fillDaughters_HADMERGE(jet, leading_dau_pt, leading_dau_eta, dau_pt, dau_deta, dau_dphi, dau_charge, dau_ishadronic, nmult);
       else
-	fillDaughters(jet, leading_dau_pt, leading_dau_eta, dau_pt, dau_deta, dau_dphi, dau_charge, dau_ishadronic, nmult, cmult);
+	      fillDaughters(jet,
+                        leading_dau_pt,
+                        leading_dau_eta,
+                        dau_pt,
+                        dau_deta,
+                        dau_dphi,
+                        dau_charge,
+                        dau_ishadronic,
+                        dau_eemfrac,
+                        dau_ehadfrac,
+                        dau_pid,
+                        dau_istrack,
+                        nmult,
+                        cmult);
 
 #ifdef WOOJIN_VARIABLES
         // charged dau pt sum
@@ -1114,48 +1153,96 @@ void fillDaughters_HADMERGE(Jet *jet, float& leading_dau_pt, float& leading_dau_
   } 
 }
 
-void fillDaughters(Jet *jet, float& leading_dau_pt, float& leading_dau_eta,
-		   std::vector<float> &dau_pt, std::vector<float> &dau_deta, std::vector<float> &dau_dphi,
-		   std::vector<int> &dau_charge, std::vector<int> &dau_ishadronic, int& nmult, int& cmult)
+void fillDaughters(
+    Jet *jet,
+    float& leading_dau_pt,
+    float& leading_dau_eta,
+	std::vector<float> &dau_pt,
+    std::vector<float> &dau_deta,
+    std::vector<float> &dau_dphi,
+	std::vector<int> &dau_charge,
+    std::vector<int> &dau_ishadronic,
+    std::vector<float> &dau_eemfrac,
+    std::vector<float> &dau_ehadfrac,
+    std::vector<int> &dau_pid,
+    std::vector<int> &dau_istrack,
+    int& nmult,
+    int& cmult)
 {
-  size_t n_dau = jet->Constituents.GetEntries();
-  double dpt = 0, deta = 0, dphi = 0;
-  nmult = cmult = 0;
-  leading_dau_eta = leading_dau_pt = 0;
-  for (size_t ic = 0; ic < n_dau; ++ic) {
-    auto dau = jet->Constituents.At(ic);
-    // Constituents can be a tower (neutral) or a track (charged)
+    size_t n_dau = jet->Constituents.GetEntries();
 
-    float deta = 10, dphi = 10, dr = 10, dpt = 0;
-    if (auto tower = dynamic_cast<Tower*>(dau)) {
-      // if (tower->ET < 1.0) { // Don't accept low energy neutrals
-      // 	continue;
-      // }
-      dpt = tower->ET;
-      deta = tower->Eta - jet->Eta;
-      dphi = DeltaPhi(tower->Phi, jet->Phi);
-      dau_charge.push_back(0); nmult++;
-      if (tower->Eem == 0.0)
-	dau_ishadronic.push_back(1);
-      else if (tower->Ehad == 0.0)
-	dau_ishadronic.push_back(0);
-      else
-	std::cout << "ERROR: Tower with Had " << tower->Ehad << " and EM " << tower->Eem << " energy" << std::endl;
-    } else if (auto track = dynamic_cast<Track*>(dau)) {
-      dpt = track->PT;
-      deta = track->Eta - jet->Eta;
-      dphi = DeltaPhi(track->Phi, jet->Phi);
-      dau_charge.push_back(track->Charge); cmult++;
-      dau_ishadronic.push_back(0);
-    } else {
-      std::cout << "BAD DAUGHTER! " << dau << std::endl;
+    double dpt = 0, deta = 0, dphi = 0;
+    nmult = cmult = 0;
+    leading_dau_eta = leading_dau_pt = 0;
+
+    for (size_t ic = 0; ic < n_dau; ++ic) {
+        auto dau = jet->Constituents.At(ic);
+        // Constituents can be a tower (neutral) or a track (charged)
+
+        float deta = 10, dphi = 10, dr = 10, dpt = 0;
+
+
+        // Neutral Hadron, photon
+        if (auto tower = dynamic_cast<Tower*>(dau)) {
+            dau_istrack.push_back(1);
+            dau_pid.push_back(0);
+            // if (tower->ET < 1.0) { // Don't accept low energy neutrals
+            // 	continue;
+            // }
+
+
+            dpt = tower->ET;
+            deta = tower->Eta - jet->Eta;
+            dphi = DeltaPhi(tower->Phi, jet->Phi);
+
+            dau_charge.push_back(0);
+            nmult++;
+
+            if (tower->Eem == 0.0)
+                dau_ishadronic.push_back(1);
+            else if (tower->Ehad == 0.0)
+                dau_ishadronic.push_back(0);
+            else
+                std::cout << "ERROR: Tower with Had " << tower->Ehad << " and EM " << tower->Eem << " energy" << std::endl;
+
+            // class Tower
+            // E: calorimeter tower energy
+            // Eem: calorimeter tower electromagnetic energy 
+            // Ehad: calorimeter tower hadronic energy
+            dau_eemfrac.push_back(tower->Eem / tower->E);
+            dau_ehadfrac.push_back(tower->Ehad / tower->E);
+        }
+        else if (auto track = dynamic_cast<Track*>(dau)) {
+            dau_istrack.push_back(0.0);
+            dau_eemfrac.push_back(0.0);
+            dau_ehadfrac.push_back(0.0);
+
+
+            dpt = track->PT;
+            deta = track->Eta - jet->Eta;
+            dphi = DeltaPhi(track->Phi, jet->Phi);
+
+            dau_charge.push_back(track->Charge);
+            cmult++;
+
+            dau_ishadronic.push_back(0);
+
+            // class Track
+            // PID: HEP ID number
+            dau_pid.push_back(track->PID);
+
+        }
+        else {
+          std::cout << "BAD DAUGHTER! " << dau << std::endl;
+        }
+
+        dau_pt.push_back(dpt);
+        dau_deta.push_back(deta);
+        dau_dphi.push_back(dphi);
+
+        if (dpt > leading_dau_pt) {
+            leading_dau_pt = dpt;
+            leading_dau_eta = deta;
+        }
     }
-    dau_pt.push_back(dpt);
-    dau_deta.push_back(deta);
-    dau_dphi.push_back(dphi);
-    if (dpt > leading_dau_pt) {
-      leading_dau_pt = dpt;
-      leading_dau_eta = deta;
-    }
-  }
 }

@@ -1,4 +1,9 @@
-#include "jsoncpp/jsoncpp.cpp"
+#include "TFile.h"
+#include "TTree.h"
+#include <tuple>
+
+
+
 
 //////////////////////////////////////////////////////
 const float kDEtaMax = 0.4;
@@ -9,18 +14,59 @@ const TString kTreeName = "jetAnalyser";
 
 bool IsNotZero(int i) {return i!=0;}
 
+
 template<typename T>
 bool IsInfty(T i) {return std::abs(i) == std::numeric_limits<T>::infinity();}
 
 
-std::tuple<int, int> CalcIndices(float x, float y,
-                                 float x_size=33, float y_size=33,
-                                 float x_max=0.4, float y_max=0.4)
+int CalcIdx(float x, float x_size=33, float x_max=0.4)
 {
     int x_idx = int((x+x_max)/(2*x_max/x_size));
-    int y_idx = int((y+y_max)/(2*y_max/y_size));
-    return std::make_tuple(x_idx, y_idx);
+    return x_idx;
 }
+
+
+int CalcExpoIdx(float x, float threshold=0.1,
+                int x_size=33, float x_max=0.4)
+{
+    int idx;
+    if (x < 0)
+        idx = int(x_size / 2.0 * std::exp(x/threshold));
+    else
+        idx = int(x_size - x_size / 2.0 * std::exp(x/threshold));
+    return idx;
+}
+
+
+int CalcSqrtIdx(float x, int x_size=33, float x_max=0.4)
+{
+    int idx;
+
+    float x_sqrt = std::sqrt(x);
+
+    return idx;
+}
+
+
+class 
+
+
+std::tuple<int, int> CalcPolarSqrtIndices(
+    float eta, int eta_size, float eta_max,
+    float phi, int phi_size, float phi_max)
+{
+    float r = std::sqrt( std::pow(eta, 2) + std::pow(pho, 2) );
+    float theta = atan2(phi, eta);
+
+    float sqrt_r = std::sqrt(r);
+
+    float sqrt_eta = sqrt_r * std::cos(theta);
+    float sqrt_phi = sqrt_r * std::sin(theta);
+
+    float eta_idx = ClacIdx(
+
+}
+
 
 
 
@@ -83,6 +129,8 @@ TString MakeJetImage(TString const& input_path,
     BRANCH_IMAGE(image_cmult33, 33*33);
 
     BRANCH_IMAGE(image_cpt47, 47*47);
+    BRANCH_IMAGE(image_cpt47_expo, 47*47);
+    BRANCH_IMAGE(image_cpt47_sqrt, 47*47);
 
     const int print_freq = int(input_entries/float(20));
     for(unsigned int i=0; i<input_entries; ++i){
@@ -170,8 +218,8 @@ void ScaleImage(float image[], int size, float scale_factor){
 
 
 std::tuple<TString, TString, TString>
-SplitNScale(TString const& input_path,
-                     TString const& input_key="jetAnalyser"){
+SplitNPrepTraining(TString const& input_path,
+               TString const& input_key="jetAnalyser"){
 
     std::cout << "\n#################################################" << endl;
     std::cout << "Input: " << input_path << endl;
@@ -285,23 +333,11 @@ SplitNScale(TString const& input_path,
 
     for(unsigned int i=val_start; i<test_start; i++){
         input_tree->GetEntry(i);
-
-        ScaleImage(image_cpt33,   33*33, scale_factor["image_cpt33"]);
-        ScaleImage(image_npt33,   33*33, scale_factor["image_npt33"]);
-        ScaleImage(image_cmult33, 33*33, scale_factor["image_cmult33"]);
-        ScaleImage(image_cpt47,   47*47, scale_factor["image_cpt47"]);
-
         val_tree->Fill();
     }
 
     for(unsigned int i=test_start; i<input_entries; i++){
         input_tree->GetEntry(i);
-
-        ScaleImage(image_cpt33,   33*33, scale_factor["image_cpt33"]);
-        ScaleImage(image_npt33,   33*33, scale_factor["image_npt33"]);
-        ScaleImage(image_cmult33, 33*33, scale_factor["image_cmult33"]);
-        ScaleImage(image_cpt47,   47*47, scale_factor["image_cpt47"]);
-
         test_tree->Fill();
     }
 
@@ -391,22 +427,23 @@ TString PrepTestData(TString const& input_path,
 void macro(){
     TString data_dir = "../Data/FastSim_pt_100_500/jet_image";
 
-    TString dijet_train = gSystem->ConcatFileName(data_dir, "dijet_training.root"); 
-    TString dijet_validation = gSystem->ConcatFileName(data_dir, "dijet_validation.root"); 
-    TString dijet_test = gSystem->ConcatFileName(data_dir, "dijet_test.root"); 
+    TString dijet_path = gSystem->ConcatFileName(data_dir, "dijet.root");
+    TString zjet_path = gSystem->ConcatFileName(data_dir, "zjet.root");
 
-    TString zjet_train = gSystem->ConcatFileName(data_dir, "zjet_training.root"); 
-    TString zjet_validation = gSystem->ConcatFileName(data_dir, "zjet_validation.root"); 
-    TString zjet_test = gSystem->ConcatFileName(data_dir, "zjet_test.root"); 
+    TString dijet_train, dijet_val, dijet_test;
+    std::tie(dijet_train, dijet_val, dijet_test) = SplitNPrepTraining(dijet_path);
 
-    PrepTestData(dijet_validation, dijet_train);
+    TString zjet_train, zjet_val, zjet_test;
+    std::tie(zjet_train, zjet_val, zjet_test) = SplitNPrepTraining(zjet_path);
+
+    PrepTestData(dijet_val, dijet_train);
     PrepTestData(dijet_test, dijet_train);
-    PrepTestData(dijet_validation, zjet_train);
+    PrepTestData(dijet_val, zjet_train);
     PrepTestData(dijet_test, zjet_train);
 
-    PrepTestData(zjet_validation, dijet_train);
+    PrepTestData(zjet_val, dijet_train);
     PrepTestData(zjet_test, dijet_train);
-    PrepTestData(zjet_validation, zjet_train);
+    PrepTestData(zjet_val, zjet_train);
     PrepTestData(zjet_test, zjet_train);
 
 }
