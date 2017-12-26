@@ -1,6 +1,6 @@
 #!/bin/sh
 
-RUN="3"
+RUN="0"
 
 echo "Running PP->QQ"
 NAME="mg5_pp_qq_default_$RUN"
