@@ -11,75 +11,84 @@ ROOT.gROOT.SetBatch(True)
 
 
 class Meter(object):
-    def __init__(self, data_name_list, dpath):
-        for data_name in data_name_list:
-            setattr(self, data_name, np.array([]))
-
-        self._data_name_list = data_name_list
-            
+    def __init__(self, name_list, dpath):
+        self.data = {name: np.empty(shape=(0,), dtype=np.float32) for name in name_list}
         self.dpath = dpath
-        self.waiting_list = []
+        self.plot_list = []
 
     def append(self, data_dict):
         for k in data_dict.keys():
-            setattr(self, k, np.r_[getattr(self, k), data_dict[k]])
+            self.data[k] = np.append(arr=self.data[k], values=data_dict[k])
         
-    def save(self):
-        raise NotImplementedError("")
+    def add_plot(self, x, ys, title, xlabel, ylabel, use_lowess=True):
+        """
+        ys: [(name, label, color) or (name, label, color)]
+        """
+        ys = map(self.normalize_ys, ys)
+        self.plot_list.append({
+            "x": x,
+            "ys": ys,
+            "title": title,
+            "xlabel": xlabel,
+            "ylabel": ylabel,
+            "use_lowess": use_lowess})
+
         
-    def plot(self, data_pair_list, title):
+    def plot(self, plot_info):
         plt.figure(figsize=(8, 6))
         plt.rc("font", size=12)
-        
-        for x, y in data_pair_list:
-            color = self._color(y)
-            plt.plot(getattr(self, x), getattr(self, y),
-                     color=color, lw=2, alpha=0.2, label=y)
-            
-            x_filtered, y_filtered = self._smooth(
-                getattr(self, x),getattr(self, y))
-            
-            plt.plot(x_filtered, y_filtered,
-                     color=color, lw=2, label=y+'(lowess)')
 
-        plt.xlabel(x)
-        plt.ylabel(y)
+        x = self.data[plot_info["x"]]
 
-        plt.title(title)
+        for yname, label, color in plot_info["ys"]:
+            y = self.data[yname]
+            plt.plot(x, y, label=label, color=color, lw=2, alpha=0.2)
+
+            if plot_info["use_lowess"]:
+                # smooth 
+                filtered = lowess(y, x, is_sorted=True, frac=0.075, it=0)
+            
+                plt.plot(filtered[:,0], filtered[:,1],
+                         label=label+"(LOWESS)", color=color, lw=2, alpha=1)
+
+        plt.xlabel(plot_info["xlabel"])
+        plt.ylabel(plot_info["ylabel"])
+
+        plt.title(plot_info["title"])
         plt.legend(loc='best')
         plt.grid()
-        #plt.show()
-        path = os.path.join(self.dpath, title + ".png")
+
+        filename = plot_info["title"].replace(" ", "_") + ".png"
+        path = os.path.join(self.dpath, filename)
         plt.savefig(path)
         plt.close()
         
-    def prepare(self, data_pair_list, title):
-        self.waiting_list.append({"data_pair_list": data_pair_list, "title": title})
 
     def save(self):
-        data_collection = {} 
-        for data_name in self._data_name_list:
-            data_collection[data_name] = getattr(self, data_name)
         path = os.path.join(self.dpath, "loss_and_acc.npz")
-        np.savez(path, **data_collection)
+        np.savez(path, **self.data)
         
     def finish(self):
-        for waiting in self.waiting_list:
-            self.plot(**waiting)
+        for plot_info in self.plot_list:
+            self.plot(plot_info)
         self.save() 
-        
-    def _smooth(self, x, y):
-        filtered = lowess(y, x, is_sorted=True, frac=0.075, it=0)
-        return filtered[:, 0], filtered[:, 1]
+
+
+    def normalize_ys(self, y_info):
+        length = len(y_info)
+        if length == 2:
+            color = self._color(y_info[0])
+            y_info += (color,)
+        elif length > 3 or length <= 1:
+            raise ValueError
+        return y_info
         
     def _color(self, y):
-        if ('tr' in y) and ("dijet" in y):
+        if "train" in y:
             color = "navy"
-        elif ("tr" in y) and ("zjet" in y):
-            color = "darkgreen"
-        elif ("val" in y) and ("dijet" in y):
+        elif "dijet" in y:
             color = 'orange'
-        elif ("val" in y) and ("zjet" in y):
+        elif "zjet" in y:
             color = "indianred"
         else:
             color = np.random.rand(3,1)
@@ -121,14 +130,14 @@ class ROCMeter(object):
     def plot_roc_curve(self, path):
         # fig = plt.figure()
         plt.plot(self.tpr, self.fnr, color='darkorange',
-                 lw=2, label='ROC curve (area = %0.3f)' % self.auc)
+                 lw=2, label='ROC curve (area = {:0.3f})'.format(self.auc))
         plt.plot([0, 1], [1, 1], color='navy', lw=2, linestyle='--')
         plt.plot([1, 1], [0, 1], color='navy', lw=2, linestyle='--')
         plt.xlim([0.0, 1.1])
         plt.ylim([0.0, 1.1])
         plt.xlabel('Quark Jet Efficiency (TPR)')
         plt.ylabel('Gluon Jet Rejection (FNR)')
-        plt.title('%s-%d / ROC curve' % (self.title, self.step))
+        plt.title('{}-{} / ROC curve'.format(self.title, self.step))
         plt.legend(loc='lower left')
         plt.grid()
         plt.savefig(path)

@@ -5,7 +5,7 @@ from __future__ import print_function
 import os
 import datetime
 import json
-
+import argparse
 
 from tensorflow.python.client import device_lib
 
@@ -33,7 +33,7 @@ def get_log_dir(path, creation=True):
 
 def get_saved_model_paths(dpath):
     def foo(f):
-        step = int(f.split("_")[1].split(".")[0])
+        step = f.split("_")[1].split(".")[0]
         path = os.path.join(dpath, f)
         return (path, step)
 
@@ -60,8 +60,11 @@ class Logger(object):
         elif self._mode == "read":
             self.log = self.load(self.path)
 
-    def get_args(self, args):
-        self.log.update(vars(args))
+    def update(self, data):
+        if isinstance(data, dict):
+            self.log.update(data)
+        elif isinstance(data, argparse.Namespace):
+            self.log.update(vars(data))
 
     def __setitem__(self, key, item):
         self.log[key] = item
@@ -82,9 +85,29 @@ class Logger(object):
     def finish(self):
         self.save() 
 
-
-
-
 def get_available_gpus():
     local_device_protos = device_lib.list_local_devices()
     return [x.name for x in local_device_protos if x.device_type == 'GPU']
+
+
+def get_dataset_paths(dpath, data="dijet"):
+    data = data.lower()
+    if data in ["dijet", "dijet_set", "dj"]:
+        dpath = os.path.join(dpath, "dijet_set")
+    elif data in ["zjet", "zjet_set", "zj", "z+jet", "z+jet_set"]:
+        dpath = os.path.join(dpath, "zjet_set")
+    else:
+        pass
+
+    entries = os.listdir(dpath)
+    datasets = {}
+    for each in entries:
+        key = os.path.splitext(each)[0]
+        datasets[key] = os.path.join(dpath, each)
+
+    for key in datasets:
+        if "train" in key:
+            datasets["training_set"] = datasets.pop(key)
+            break
+
+    return datasets
