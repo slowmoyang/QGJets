@@ -28,6 +28,7 @@ def get_log_dir(path, creation=True):
     log.make_subdir('saved_models')
     log.make_subdir('roc')
     log.make_subdir('output_histogram')
+    log.make_subdir("heatmap")
     return log
 
 
