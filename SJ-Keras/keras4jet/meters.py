@@ -65,7 +65,7 @@ class Meter(object):
         
 
     def save(self):
-        path = os.path.join(self.dpath, "loss_and_acc.npz")
+        path = os.path.join(self.dpath, "validation.npz")
         np.savez(path, **self.data)
         
     def finish(self):
@@ -102,8 +102,8 @@ class ROCMeter(object):
         self.title = title
         self._prefix = prefix
 
-        self.labels = np.array([])
-        self.preds = np.array([])  # predictions
+        self.y_true = np.array([])
+        self.y_pred = np.array([])  # predictions
 
         # uninitialized attributes
         self.fpr = None
@@ -111,15 +111,15 @@ class ROCMeter(object):
         self.fnr = None
         self.auc = None
 
-    def append(self, labels, preds):
-        # self.labels = np.r_[self.labels, labels]
-        # self.preds = np.r_[self.preds, preds]
-        self.labels = np.append(self.labels, labels)
-        self.preds = np.append(self.preds, preds)
+    def append(self, y_true, y_pred):
+        # self.y_true = np.r_[self.y_true, y_true]
+        # self.y_pred = np.r_[self.y_pred, y_pred]
+        self.y_true = np.append(self.y_true, y_true[:,1])
+        self.y_pred = np.append(self.y_pred, y_pred[:, 1])
 
 
     def compute_roc(self):
-        self.fpr, self.tpr, _ = roc_curve(self.labels, self.preds)
+        self.fpr, self.tpr, _ = roc_curve(self.y_true, self.y_pred)
         self.fnr = 1 - self.fpr
         self.auc = auc(self.fpr, self.tpr)
 
@@ -161,6 +161,9 @@ class ROCMeter(object):
 
 
 
+
+
+
 class OutHist(object):
     def __init__(self, dpath, step, dname_list):
         filename = "outhist-step_{step}.root".format(step=step)
@@ -192,8 +195,8 @@ class OutHist(object):
     def cd(self, dname):
         self.root_file.cd(dname)
 
-    def fill(self, dname, labels, preds):
-        for is_gluon, gluon_likeness in zip(labels, preds):
+    def fill(self, dname, y_true, y_pred):
+        for is_gluon, gluon_likeness in zip(y_true[:, 1], y_pred[:, 1]):
             if is_gluon:
                 self.hists[dname]["gluon"].Fill(gluon_likeness)
             else:
