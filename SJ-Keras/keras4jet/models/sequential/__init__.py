@@ -2,9 +2,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from . import ak4
+from . import ak4_without_res
 from . import ak4_elu
 from . import ak4_elu_gru
+from . import ak4_without_conv
 
 __all__ = ["ak4"]
 
