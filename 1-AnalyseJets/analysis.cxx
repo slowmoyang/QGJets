@@ -197,18 +197,7 @@ int main(int argc, char *argv[])
   BranchF(weighted_outerring);
   BranchF(drmax);
   // Track-based Energy-Energy-Correlation(EEC) angularity (beta is tunable)
-  BranchF(ang_EEC_beta_0);
-  BranchF(ang_EEC_beta_1);
-  BranchF(ang_EEC_beta_2);
-  BranchF(ang_EEC_beta_3);
-  BranchF(ang_EEC_beta_4);
-  BranchF(ang_EEC_beta_5);
-  BranchF(ang_EEC_beta_6);
-  BranchF(ang_EEC_beta_7);
-  BranchF(ang_EEC_beta_8);
-  BranchF(ang_EEC_beta_9);
-  BranchF(ang_EEC_beta_10);
-  //BranchAF(ang_EEC_beta,31);
+  BranchAF(ang_EEC_beta,31);
   // Geomoment of charged daughter inside jet shape and outside jet shape 
   BranchF(inner_charged_GeoMoment_0_1);
   BranchF(inner_charged_GeoMoment_1_2);
@@ -218,51 +207,6 @@ int main(int argc, char *argv[])
   // charged daughter sum
   BranchF(sum_track_pt);
   //Ripley's K function
-  BranchF(RKF_01);
-  BranchF(RKF_02);
-  BranchF(RKF_03);
-  BranchF(RKF_04);
-  BranchF(RKF_05);
-  BranchF(RKF_06);
-  BranchF(RKF_07);
-  BranchF(RKF_08);
-  
-  BranchF(MRKF_CC_01);
-  BranchF(MRKF_CC_02);
-  BranchF(MRKF_CC_03);
-  BranchF(MRKF_CC_04);
-  BranchF(MRKF_CC_05);
-  BranchF(MRKF_CC_06);
-  BranchF(MRKF_CC_07);
-  BranchF(MRKF_CC_08);
-
-  BranchF(MRKF_CN_01);
-  BranchF(MRKF_CN_02);
-  BranchF(MRKF_CN_03);
-  BranchF(MRKF_CN_04);
-  BranchF(MRKF_CN_05);
-  BranchF(MRKF_CN_06);
-  BranchF(MRKF_CN_07);
-  BranchF(MRKF_CN_08);
-
-  BranchF(MRKF_NC_01);
-  BranchF(MRKF_NC_02);
-  BranchF(MRKF_NC_03);
-  BranchF(MRKF_NC_04);
-  BranchF(MRKF_NC_05);
-  BranchF(MRKF_NC_06);
-  BranchF(MRKF_NC_07);
-  BranchF(MRKF_NC_08);
-
-  BranchF(MRKF_NN_01);
-  BranchF(MRKF_NN_02);
-  BranchF(MRKF_NN_03);
-  BranchF(MRKF_NN_04);
-  BranchF(MRKF_NN_05);
-  BranchF(MRKF_NN_06);
-  BranchF(MRKF_NN_07);
-  BranchF(MRKF_NN_08);
-
   BranchAF(RKF, 80);
   BranchAF(MRKF_CC, 80);
   BranchAF(MRKF_CN, 80);
@@ -330,6 +274,7 @@ int main(int argc, char *argv[])
     for (unsigned j = 0; j < jets->GetEntries(); ++j) {
       lepton_overlap = false;
       if (j >= 2) balanced = false; // only top 2 balanced
+      if (j >= 1) pass_Zjets = false; // only top 1 passes ZJet!
 
       auto jet = (Jet*) jets->At(j);
 
@@ -405,19 +350,7 @@ int main(int argc, char *argv[])
       weighted_innerring3to4 = 0;
       weighted_outerring = 0;
       
-      ang_EEC_beta_0 = 0;
-      ang_EEC_beta_1 = 0;
-      ang_EEC_beta_2 = 0;
-      ang_EEC_beta_3 = 0;
-      ang_EEC_beta_4 = 0;
-      ang_EEC_beta_5 = 0;
-      ang_EEC_beta_6 = 0;
-      ang_EEC_beta_7 = 0;
-      ang_EEC_beta_8 = 0;
-      ang_EEC_beta_9 = 0;
-      ang_EEC_beta_10 = 0;
-     
-      //memset(ang_EEC_beta, 0, sizeof(ang_EEC_beta));
+      memset(ang_EEC_beta, 0, sizeof(ang_EEC_beta));
  
       inner_charged_GeoMoment_0_1 = 0;
       inner_charged_GeoMoment_1_2 = 0;
@@ -428,51 +361,6 @@ int main(int argc, char *argv[])
       sum_track_pt = 0;
       drmax = 0;
       
-      RKF_01 = 0;
-      RKF_02 = 0;
-      RKF_03 = 0;
-      RKF_04 = 0;
-      RKF_05 = 0;
-      RKF_06 = 0;
-      RKF_07 = 0;
-      RKF_08 = 0;
-
-      MRKF_CC_01 = 0;
-      MRKF_CC_02 = 0;
-      MRKF_CC_03 = 0;
-      MRKF_CC_04 = 0;
-      MRKF_CC_05 = 0;
-      MRKF_CC_06 = 0;
-      MRKF_CC_07 = 0;
-      MRKF_CC_08 = 0;
-
-      MRKF_CN_01 = 0;
-      MRKF_CN_02 = 0;
-      MRKF_CN_03 = 0;
-      MRKF_CN_04 = 0;
-      MRKF_CN_05 = 0;
-      MRKF_CN_06 = 0;
-      MRKF_CN_07 = 0;
-      MRKF_CN_08 = 0;
-
-      MRKF_NC_01 = 0;
-      MRKF_NC_02 = 0;
-      MRKF_NC_03 = 0;
-      MRKF_NC_04 = 0;
-      MRKF_NC_05 = 0;
-      MRKF_NC_06 = 0;
-      MRKF_NC_07 = 0;
-      MRKF_NC_08 = 0;
-
-      MRKF_NN_01 = 0;
-      MRKF_NN_02 = 0;
-      MRKF_NN_03 = 0;
-      MRKF_NN_04 = 0;
-      MRKF_NN_05 = 0;
-      MRKF_NN_06 = 0;
-      MRKF_NN_07 = 0;
-      MRKF_NN_08 = 0;
-
       memset(RKF,0, sizeof(RKF));
       memset(MRKF_CC,0, sizeof(MRKF_CC));
       memset(MRKF_CN,0, sizeof(MRKF_CN));
@@ -528,15 +416,6 @@ int main(int argc, char *argv[])
 	}
       }
       
-        // radial distance of daugther farthest from the jet
-      for (size_t b = 0; b< dau_pt.size(); ++b){
-        double deta_maxcand = dau_deta[b];
-        double dphi_maxcand = dau_dphi[b];
-        double maxcand = DeltaR(deta_maxcand, dphi_maxcand);
-        if (maxcand > drmax) {
-          drmax = maxcand;
-        }
-      }
       // Ripley's K function estimater
       // unvariate case and bivariate(charged, neutral) case
 
@@ -601,53 +480,6 @@ int main(int argc, char *argv[])
           }
         }
       }
-      RKF_01 = RKF[9];
-      MRKF_CC_01 = MRKF_CC[9];
-      MRKF_CN_01 = MRKF_CN[9];
-      MRKF_NC_01 = MRKF_NC[9];
-      MRKF_NN_01 = MRKF_NN[9];
-
-      RKF_02 = RKF[19];
-      MRKF_CC_02 = MRKF_CC[19];
-      MRKF_CN_02 = MRKF_CN[19];
-      MRKF_NC_02 = MRKF_NC[19];
-      MRKF_NN_02 = MRKF_NN[19];
-
-      RKF_03 = RKF[29];
-      MRKF_CC_03 = MRKF_CC[29];
-      MRKF_CN_03 = MRKF_CN[29];
-      MRKF_NC_03 = MRKF_NC[29];
-      MRKF_NN_03 = MRKF_NN[29];
-
-      RKF_04 = RKF[39];
-      MRKF_CC_04 = MRKF_CC[39];
-      MRKF_CN_04 = MRKF_CN[39];
-      MRKF_NC_04 = MRKF_NC[39];
-      MRKF_NN_04 = MRKF_NN[39];
-
-      RKF_05 = RKF[49];
-      MRKF_CC_05 = MRKF_CC[49];
-      MRKF_CN_05 = MRKF_CN[49];
-      MRKF_NC_05 = MRKF_NC[49];
-      MRKF_NN_05 = MRKF_NN[49];
-
-      RKF_06 = RKF[59];
-      MRKF_CC_06 = MRKF_CC[59];
-      MRKF_CN_06 = MRKF_CN[59];
-      MRKF_NC_06 = MRKF_NC[59];
-      MRKF_NN_06 = MRKF_NN[59];
-
-      RKF_07 = RKF[69];
-      MRKF_CC_07 = MRKF_CC[69];
-      MRKF_CN_07 = MRKF_CN[69];
-      MRKF_NC_07 = MRKF_NC[69];
-      MRKF_NN_07 = MRKF_NN[69];
-
-      RKF_08 = RKF[79];
-      MRKF_CC_08 = MRKF_CC[79];
-      MRKF_CN_08 = MRKF_CN[79];
-      MRKF_NC_08 = MRKF_NC[79];
-      MRKF_NN_08 = MRKF_NN[79];
 
 #endif
 
@@ -674,6 +506,9 @@ int main(int argc, char *argv[])
 	sum_detadphi += deta*dphi*weight;
 
 #ifdef WOOJIN_VARIABLES
+        if(dr>drmax){
+          drmax =dr;// radial distance of daugther farthest from the jet
+        }
         GeoMoment += (powf((dpt/pt),1))*(powf((dr/dRCut),1));
         HalfPtMoment += (powf((dpt/pt),1.5))*(powf((dr/dRCut),0));
         DRSquareMoment += (powf((dpt/pt),0))*(powf((dr/dRCut),2));
@@ -724,20 +559,9 @@ int main(int argc, char *argv[])
 	    auto dau_i = jet->Constituents.At(i);
 	    auto track_i = dynamic_cast<Track*>(dau_i);
 	    if (track_i) {
-//	      for (t = 0; t<31, ++t){
-//		ang_EEC_beta[t] += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), t*0.1))/(sum_track_pt);
-//	      }
-	      ang_EEC_beta_0 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0))/(sum_track_pt);
-	      ang_EEC_beta_1 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0.1))/(sum_track_pt);
-	      ang_EEC_beta_2 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0.2))/(sum_track_pt);
-	      ang_EEC_beta_3 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0.3))/(sum_track_pt);
-	      ang_EEC_beta_4 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0.4))/(sum_track_pt);
-	      ang_EEC_beta_5 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0.5))/(sum_track_pt);
-	      ang_EEC_beta_6 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0.6))/(sum_track_pt);
-	      ang_EEC_beta_7 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0.7))/(sum_track_pt);
-	      ang_EEC_beta_8 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0.8))/(sum_track_pt);
-	      ang_EEC_beta_9 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 0.9))/(sum_track_pt);
-	      ang_EEC_beta_10 += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), 1.0))/(sum_track_pt);
+	      for (int t = 0; t<31; ++t) {
+		ang_EEC_beta[t] += (track_ic->PT*track_i->PT)*(powf(DeltaR(track_ic->Eta - track_i->Eta, track_ic->Phi - track_i->Phi), t*0.1))/(sum_track_pt);
+	      }
 	    }
 	  }
 	}
@@ -858,7 +682,7 @@ bool passZjets(TClonesArray * jets, TClonesArray * muons, TClonesArray * electro
   if (pass_Zjets) {
     auto j = (const Jet *) jets->At(iMaxPt);
     // require them to be back to back
-    if (DeltaPhi(j->Phi, theDimuon.Phi()) < 2.5)
+    if (DeltaPhi(j->Phi, theDimuon.Phi()) < 2.1)
       pass_Zjets = false;
     for (unsigned k = 0; k < jets->GetEntries(); ++k) {
       if (k == iMaxPt) continue;
