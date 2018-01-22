@@ -1182,8 +1182,7 @@ void fillDaughters(
 
         // Neutral Hadron, photon
         if (auto tower = dynamic_cast<Tower*>(dau)) {
-            dau_istrack.push_back(1);
-            dau_pid.push_back(0);
+            dau_istrack.push_back(0);
             // if (tower->ET < 1.0) { // Don't accept low energy neutrals
             // 	continue;
             // }
@@ -1196,12 +1195,19 @@ void fillDaughters(
             dau_charge.push_back(0);
             nmult++;
 
-            if (tower->Eem == 0.0)
+            if (tower->Eem == 0.0) {
+                // hadronic
                 dau_ishadronic.push_back(1);
-            else if (tower->Ehad == 0.0)
-                dau_ishadronic.push_back(0);
-            else
+                dau_pid.push_back(0); // Neutral hadron
+            }
+            else if (tower->Ehad == 0.0) {
+                dau_ishadronic.push_back(0); // leptonic
+                // stable neutral lepton --> photon
+                dau_pid.push_back(22);
+            }
+            else{
                 std::cout << "ERROR: Tower with Had " << tower->Ehad << " and EM " << tower->Eem << " energy" << std::endl;
+            }    
 
             // class Tower
             // E: calorimeter tower energy
@@ -1211,7 +1217,7 @@ void fillDaughters(
             dau_ehadfrac.push_back(tower->Ehad / tower->E);
         }
         else if (auto track = dynamic_cast<Track*>(dau)) {
-            dau_istrack.push_back(0.0);
+            dau_istrack.push_back(1);
             dau_eemfrac.push_back(0.0);
             dau_ehadfrac.push_back(0.0);
 
