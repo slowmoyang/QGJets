@@ -1,5 +1,5 @@
 """
-arXiv:1709.01507 [cs.CV]
+arXiv:1610.02357 [cs.CV] (https://arxiv.org/abs/1610.02357)
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -18,8 +18,6 @@ from keras.layers import Conv2D
 from keras.layers import Dense
 from keras.layers import GlobalAveragePooling2D
 
-
-
 if __name__ == "__main__":
     import layer_utils
     from layer_utils import conv_unit
@@ -29,20 +27,19 @@ else:
     from .layer_utils import factorized_conv
 
 
-def se_block(x, reduction_ratio=4, activation="relu"):
+
+def middle_block(x, filters=728, activation="relu", num_iter=3):
+
     channel_axis = layer_utils.get_channel_axis()
-    in_channels = K.int_shape(x)[channel_axis]
-    bottleneck_units = int(in_channels / reduction_ratio)
 
-    # Squeeze
-    z = GlobalAveragePooling2D()(x)
+    residual = x
 
-    # Excitation
-    s = Dense(bottleneck_units)(z)
-    s = Activation(activation)(s)
-    s = Dense(channels, name=)(s)
-    s = Activation("sigmoid")(s)
-    s = Reshape()(s)
+    for _ in range(num_iter):
+        x = Activation(activation)(x)
+        x = SeparableConv2D(filters, (3, 3), padding='same', use_bias=False)(x)
+        x = BatchNormalization(axis=channel_axis)(x)
 
-    x_tilde = s * x
-    return x_tilde
+    x = Add()([x, residual])
+
+
+
