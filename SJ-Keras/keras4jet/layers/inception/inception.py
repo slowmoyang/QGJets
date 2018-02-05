@@ -48,14 +48,17 @@ def factorized_conv(x, filters, kernel_size, factorization, strides=(1,1), **kar
     return x
 
 
-def pool_proj(x, filters, pooling=AveragePooling2D):
+def pool_proj(x, filters, pooling=AveragePooling2D, **kargs):
     x = pooling(pool_size=(3,3), strides=(1,1), padding="SAME")(x)
-    x = conv_unit(x, filters=filters, kernel_size=(1,1))
+    x = conv_unit(x, filters=filters, kernel_size=(1,1), **kargs)
     return x
 
 
 
-def inception_a(x, filters=None):
+def inception_a(x,
+                filters=None,
+                order=["conv", "bn", "conv"],
+                **kargs):
     """
     For 35 X 35 grid modules of the pure Inception-v4 network.
     This is the Inception-A block.
@@ -79,26 +82,29 @@ def inception_a(x, filters=None):
     }
 
     # Avg Pooling --> 1x1 Conv
-    x0 = pool_proj(x, filters=filters["branch0"])
+    x0 = pool_proj(x, filters=filters["branch0"], order=order, **kargs)
 
     # 1x1 Conv (96)
-    x1 = conv_unit(x, kernel_size=1, filters=filters["branch1"])
+    x1 = conv_unit(x, kernel_size=1, filters=filters["branch1"], order=order, **kargs)
 
     # 1x1 Conv (64) --> 3x3 Conv (96)
-    x2 = conv_unit(x, kernel_size=1, filters=filters["branch2_0"])
-    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_1"])
+    x2 = conv_unit(x, kernel_size=1, filters=filters["branch2_0"], order=order,  **kargs)
+    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_1"], order=order, **kargs)
 
     # 1x1 Conv (64) --> 
-    x3 = conv_unit(x, kernel_size=1, filters=filters["branch3_0"])
-    x3 = conv_unit(x3, kernel_size=3, filters=filters["branch3_1"])
-    x3 = conv_unit(x3, kernel_size=3, filters=filters["branch3_2"])
+    x3 = conv_unit(x, kernel_size=1, filters=filters["branch3_0"], order=order, **kargs)
+    x3 = conv_unit(x3, kernel_size=3, filters=filters["branch3_1"], order=order,  **kargs)
+    x3 = conv_unit(x3, kernel_size=3, filters=filters["branch3_2"], order=order, **kargs)
 
     # Filter concat
     filter_concat = Concatenate(axis=channel_axis)([x0, x1, x2, x3])
     return filter_concat
 
 
-def inception_b(x, filters=None):
+def inception_b(x,
+                filters=None,
+                order=["conv", "bn", "activation"],
+                **kargs):
     """
     For 17 X 17 grid modules of the pure Inception-v4 network.
     This is the Inception-B block.
@@ -126,27 +132,42 @@ def inception_b(x, filters=None):
     }
 
 
+    # Branch0: Pool proj
+    x0 = pool_proj(x, filters=filters["branch0"],
+                   order=order, **kargs)
 
-    x0 = pool_proj(x, filters=filters["branch0"])
+    # Branch1
+    x1 = conv_unit(x, kernel_size=(1,1), filters=filters["branch1"],
+                   order=order, **kargs)
 
-    x1 = conv_unit(x, kernel_size=(1,1), filters=filters["branch1"])
-
-    x2 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch2_0"])
-    x2 = conv_unit(x2, kernel_size=(1, 7), filters=filters["branch2_1"])
-    x2 = conv_unit(x2, kernel_size=(7, 1), filters=filters["branch2_2"])
-
-    x3 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch3_0"])
-    x3 = conv_unit(x3, kernel_size=(1, 7), filters=filters["branch3_1"])
-    x3 = conv_unit(x3, kernel_size=(7, 1), filters=filters["branch3_2"])
-    x3 = conv_unit(x3, kernel_size=(1, 7), filters=filters["branch3_3"])
-    x3 = conv_unit(x3, kernel_size=(7, 1), filters=filters["branch3_4"])
-
+    # Branch2
+    x2 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch2_0"],
+                   order=order, **kargs)
+    x2 = conv_unit(x2, kernel_size=(1, 7), filters=filters["branch2_1"],
+                   order=order, **kargs)
+    x2 = conv_unit(x2, kernel_size=(7, 1), filters=filters["branch2_2"],
+                   order=order, **kargs)
+    # Branch3
+    x3 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch3_0"],
+                   order=order, **kargs)
+    x3 = conv_unit(x3, kernel_size=(1, 7), filters=filters["branch3_1"],
+                   order=order, **kargs)
+    x3 = conv_unit(x3, kernel_size=(7, 1), filters=filters["branch3_2"],
+                   order=order, **kargs)
+    x3 = conv_unit(x3, kernel_size=(1, 7), filters=filters["branch3_3"],
+                   order=order, **kargs)
+    x3 = conv_unit(x3, kernel_size=(7, 1), filters=filters["branch3_4"],
+                   order=order, **kargs)
 
     # Filter concat
     filter_concat = Concatenate(axis=channel_axis)([x0, x1, x2, x3])
     return filter_concat
 
-def inception_c(x, filters=None):
+
+def inception_c(x,
+                filters=None,
+                order=["conv", "bn", "activation"],
+                **kargs):
     """
     For 8 X 8 grid modules of the pure Inception-v4 network.
     This is the Inception-C block.
