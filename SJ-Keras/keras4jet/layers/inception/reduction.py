@@ -18,7 +18,10 @@ from keras4jet.layers import layer_utils
 from keras4jet.layers.layer_utils import conv_unit
 
 
-def reduction_a(x, filters=None):
+def reduction_a(x,
+                filters=None,
+                order=["conv", "bn", "activation"],
+                **kargs):
     """
     for 35 x 35 to 17 x 17 reduction module.
 
@@ -39,18 +42,25 @@ def reduction_a(x, filters=None):
 
     x0 = MaxPooling2D(pool_size=3, strides=2, padding="VALID")(x)
 
-    x1 = conv_unit(x, filters=filters["branch1"], kernel_size=3, strides=2, padding="VALID")
+    x1 = conv_unit(x, filters=filters["branch1"], kernel_size=3, strides=2,
+                   padding="VALID", order=order, **kargs)
 
-    x2 = conv_unit(x, filters=filters["branch2_0"], kernel_size=1, strides=1, padding="SAME")
-    x2 = conv_unit(x2, filters=filters["branch2_1"], kernel_size=3, strides=1, padding="SAME")
-    x2 = conv_unit(x2, filters=filters["branch2_2"], kernel_size=3, strides=2, padding="VALID")
+    x2 = conv_unit(x, filters=filters["branch2_0"], kernel_size=1, strides=1,
+                   padding="SAME", order=order, **kargs)
+    x2 = conv_unit(x2, filters=filters["branch2_1"], kernel_size=3, strides=1,
+                   padding="SAME", order=order, **kargs)
+    x2 = conv_unit(x2, filters=filters["branch2_2"], kernel_size=3, strides=2,
+                   padding="VALID", order=order, **kargs)
 
     filter_concat = Concatenate(axis=channel_axis)([x0, x1, x2])
 
     return filter_concat
 
 
-def reduction_b(x, filters=None):
+def reduction_b(x,
+                filters=None,
+                order=["conv", "bn", "activation"],
+                **kargs):
     """
     for 17 x 17 to 8 x 8 grid-reduction module. Reduction-B module used by the
     wider Inception-ResNet-v1 network.
@@ -76,15 +86,22 @@ def reduction_b(x, filters=None):
 
     x0 = MaxPooling2D(pool_size=(3,3), strides=(2,2), padding="VALID")(x)
 
-    x1 = conv_unit(x, filters=filters["branch1_0"], kernel_size=1, strides=1, padding="SAME")
-    x1 = conv_unit(x1, filters=filters["branch1_1"], kernel_size=3, strides=2, padding="VALID")
+    x1 = conv_unit(x, filters=filters["branch1_0"], kernel_size=1, strides=1,
+                   padding="SAME", order=order, **kargs)
+    x1 = conv_unit(x1, filters=filters["branch1_1"], kernel_size=3, strides=2,
+                   padding="VALID", order=order, **kargs)
 
-    x2 = conv_unit(x, filters=filters["branch2_0"], kernel_size=1, strides=1, padding="SAME")
-    x2 = conv_unit(x2, filters=filters["branch2_1"], kernel_size=3, strides=2, padding="VALID")
+    x2 = conv_unit(x, filters=filters["branch2_0"], kernel_size=1, strides=1,
+                   padding="SAME", order=order, **kargs)
+    x2 = conv_unit(x2, filters=filters["branch2_1"], kernel_size=3, strides=2,
+                   padding="VALID", order=order, **kargs)
 
-    x3 = conv_unit(x, filters=filters["branch3_0"], kernel_size=1, strides=1, padding="SAME")
-    x3 = conv_unit(x3, filters=filters["branch3_1"], kernel_size=3, strides=1, padding="SAME")
-    x3 = conv_unit(x3, filters=filters["branch3_2"], kernel_size=3, strides=2, padding="VALID")
+    x3 = conv_unit(x, filters=filters["branch3_0"], kernel_size=1, strides=1,
+                   padding="SAME", order=order, **kargs)
+    x3 = conv_unit(x3, filters=filters["branch3_1"], kernel_size=3, strides=1,
+                   padding="SAME", order=order, **kargs)
+    x3 = conv_unit(x3, filters=filters["branch3_2"], kernel_size=3, strides=2,
+                   padding="VALID", order=order, **kargs)
 
     filter_concat = Concatenate(axis=channel_axis)([x0, x1, x2, x3])
 

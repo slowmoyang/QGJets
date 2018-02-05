@@ -49,7 +49,11 @@ def _inception_resnet(x, filter_concat, filters, scaling_factor, activation="rel
 
     return x
 
-def inception_resnet_a(x, filters=None, scaling_factor=0.1):
+def inception_resnet_a(x,
+                       filters=None,
+                       scaling_factor=0.1,
+                       order=["conv", "bn", "activation"],
+                       **kargs):
     """
     for 35 x 35 grid (Inception-ResNet-A) module of Inception-ResNet-v1 network
 
@@ -73,15 +77,16 @@ def inception_resnet_a(x, filters=None, scaling_factor=0.1):
         }
 
 
-    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"])
+    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"], order=order, **kargs)
 
-    x1 = conv_unit(x, kernel_size=1, filters=filters["branch1_0"])
-    x1 = conv_unit(x1, kernel_size=3, filters=filters["branch1_1"])
+    x1 = conv_unit(x, kernel_size=1, filters=filters["branch1_0"], order=order, **kargs)
+    x1 = conv_unit(x1, kernel_size=3, filters=filters["branch1_1"], order=order, **kargs)
 
 
-    x2 = conv_unit(x, kernel_size=1, filters=filters["branch2_0"])
-    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_1"])
-    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_2"])
+
+    x2 = conv_unit(x, kernel_size=1, filters=filters["branch2_0"], order=order, **kargs)
+    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_1"], order=order, **kargs)
+    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_2"], order=order, **kargs)
 
     filter_concat = Concatenate(axis=channel_axis)([x0, x1, x2])
 
@@ -93,7 +98,11 @@ def inception_resnet_a(x, filters=None, scaling_factor=0.1):
 
 
 
-def inception_resnet_b(x, filters=None, scaling_factor=0.1):
+def inception_resnet_b(x,
+                       filters=None,
+                       scaling_factor=0.1,
+                       order=["conv", "bn", "activation"],
+                       **kargs):
     """
     for 17 x 17 grid (Inception-ResNet-B) module of Inception-ResNet-v1 network
 
@@ -112,11 +121,11 @@ def inception_resnet_b(x, filters=None, scaling_factor=0.1):
             "filter_expansion": in_channels
         }
 
-    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"])
+    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"], order=order, **kargs)
 
-    x1 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch1_0"])
-    x1 = conv_unit(x, kernel_size=(7, 1), filters=filters["branch1_1"])
-    x1 = conv_unit(x, kernel_size=(1, 7), filters=filters["branch1_2"])
+    x1 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch1_0"], order=order, **kargs)
+    x1 = conv_unit(x, kernel_size=(7, 1), filters=filters["branch1_1"], order=order, **kargs)
+    x1 = conv_unit(x, kernel_size=(1, 7), filters=filters["branch1_2"], order=order, **kargs)
 
     filter_concat = Concatenate(axis=channel_axis)([x0, x1])
 
@@ -124,7 +133,11 @@ def inception_resnet_b(x, filters=None, scaling_factor=0.1):
     return out 
 
 
-def inception_resnet_c(x, filters=None, scaling_factor=0.1):
+def inception_resnet_c(x,
+                       filters=None,
+                       scaling_factor=0.1,
+                       order=["conv", "bn", "activation"],
+                       **kargs):
     """
     8x8 grid (Inception-ResNet-C) moduleof Inception-ResNet-v1 network.
 
@@ -144,11 +157,11 @@ def inception_resnet_c(x, filters=None, scaling_factor=0.1):
             "filter_expansion": in_channels
         }
 
-    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"])
+    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"], order=order, **kargs)
 
-    x1 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch1_0"])
-    x1 = conv_unit(x, kernel_size=(1, 3), filters=filters["branch1_1"])
-    x1 = conv_unit(x, kernel_size=(3, 1), filters=filters["branch1_2"])
+    x1 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch1_0"], order=order, **kargs)
+    x1 = conv_unit(x, kernel_size=(1, 3), filters=filters["branch1_1"], order=order, **kargs)
+    x1 = conv_unit(x, kernel_size=(3, 1), filters=filters["branch1_2"], order=order, **kargs)
 
     filter_concat = Concatenate(axis=channel_axis)([x0, x1])
 
