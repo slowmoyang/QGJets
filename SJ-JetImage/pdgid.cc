@@ -1,3 +1,5 @@
+#include <memory>
+
 enum class PdgId: int {
     kElectron = 11,
     kPositron = -11,
@@ -7,7 +9,7 @@ enum class PdgId: int {
     kPhoton = 22,
 };
 
-inline bool operator== (int pid0, PdgId pid1)
+bool operator== (int pid0, PdgId pid1)
 {
     return pid0 == static_cast<int>(pid1);
 }
