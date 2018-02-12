@@ -9,3 +9,6 @@ from . import resnet
 from . import densenet
 from . import capsnet
 from . import inception_resnet_v2
+
+# using keras.applications
+from . import mobilenet
