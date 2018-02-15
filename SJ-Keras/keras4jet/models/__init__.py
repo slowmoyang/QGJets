@@ -13,6 +13,14 @@ def build_a_model(model_name, *args, **kargs):
 
 def get_custom_objects(model_name):
     try:
-        return getattr(keras4jet.models.image, model_name).get_custom_objects()
+        model_file = getattr(keras4jet.models.image, model_name)
+        if hasattr(model_file, "get_custom_objects"):
+            return model_file.get_custom_objects()
+        else:
+            return {}
     except AttributeError:
-        return getattr(keras4jet.models.sequential, model_name).get_custom_objects()
+        model_file = getattr(keras4jet.models.sequential, model_name)
+        if hasattr(model_file, "get_custom_objects"):
+            return model_file.get_custom_objects()
+        else:
+            return {}
