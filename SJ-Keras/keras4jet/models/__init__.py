@@ -10,3 +10,9 @@ def build_a_model(model_name, *args, **kargs):
         return getattr(keras4jet.models.image, model_name).build_a_model(*args, **kargs)
     except AttributeError:
         return getattr(keras4jet.models.sequential, model_name).build_a_model(*args, **kargs)
+
+def get_custom_objects(model_name):
+    try:
+        return getattr(keras4jet.models.image, model_name).get_custom_objects()
+    except AttributeError:
+        return getattr(keras4jet.models.sequential, model_name).get_custom_objects()
