@@ -21,12 +21,6 @@
 #include "pixelation.cc"
 #include "pdgid.cc"
 
-//////////////////////////////////////////////////////////
-template<typename T>
-bool IsInfty(T i) {return std::abs(i) == std::numeric_limits<T>::infinity();}
-
-
-
 ////////////////////////////////////////////////////////////////////
 
 /*********************************************
@@ -90,9 +84,6 @@ TString MakeJetImage(TString const& input_path,
     const Int_t input_entries = input_tree->GetEntries();
     std::cout << "  Input entries: " << input_entries << std::endl;
 
-    // discriminating variables
-    Float_t ptD, axis1, axis2;
-    Int_t nmult, cmult;
     // daughters for jet image
     Int_t n_dau;
     std::vector<Float_t> *dau_pt=0, *dau_deta=0, *dau_dphi=0;
@@ -107,13 +98,6 @@ TString MakeJetImage(TString const& input_path,
     SBA(dau_charge);
     SBA(dau_pid);
     SBA(dau_ishadronic);
-
-    // discriminating variables
-    SBA(nmult);
-    SBA(cmult);
-    SBA(ptD);
-    SBA(axis1);
-    SBA(axis2);
 
     ////////////////////////////////////////////////////////////////////////
     // Output files
@@ -158,16 +142,22 @@ TString MakeJetImage(TString const& input_path,
 
     Int_t idx33, idx47, idx_sqrt_33, idx_sqrt_47, idx_sig_33, idx_sig_47; 
 
+    const Int_t kPrintFreq = static_cast<Int_t>( input_entries / 10 );
 
+    /******************************
+     * 
+     *
+     * *********************************/
+    Int_t num_chad=0, num_electron=0, num_muon=0, num_nhad=0, num_photon=0;
 
     for(Int_t i = 0; i < input_entries; ++i){
     	input_tree->GetEntry(i);
 
-        if(IsInfty(cmult)) continue;
-        if(IsInfty(nmult)) continue;
-        if(IsInfty(ptD)) continue;
-        if(IsInfty(axis1)) continue;
-        if(IsInfty(axis2)) continue;
+        if( i % kPrintFreq == 0 ) {
+            std::cout << "[" << i / kPrintFreq * 10 << " %]"
+                      << i << "th entry" << std::endl; 
+        }
+
 
         APPLY_ON_IMAGES(FILL_ZERO);
 
@@ -217,6 +207,8 @@ TString MakeJetImage(TString const& input_path,
 
                     image_lepton_33[idx33] += daughter_pt;
                     image_lepton_mult_33[idx33] += 1.0;
+
+                    num_electron++;
                 }
                 // Muon or antimuon
                 else if( abs( daughter_pid ) == PdgId::kMuon ){
@@ -225,11 +217,15 @@ TString MakeJetImage(TString const& input_path,
 
                     image_lepton_33[idx33] += daughter_pt;
                     image_lepton_33[idx33] += 1.0;
+
+                    num_muon++;
                 }
                 // Charged Hadrons
                 else{
                     image_chad_33[idx33] += daughter_pt;
                     image_chad_mult_33[idx33] += 1.0;
+
+                    num_chad++;
                 }
 	        }
             // Neutral particle
@@ -241,11 +237,15 @@ TString MakeJetImage(TString const& input_path,
                 if( daughter_ishadronic ) {
                     image_nhad_33[idx33] += daughter_pt;
                     image_nhad_mult_33[idx33] += 1.0;
+
+                    num_nhad++;
                 }
                 // Photon
                 else {
                     image_photon_33[idx33] += daughter_pt;
                     image_photon_mult_33[idx33] += 1.0;
+
+                    num_photon++;
                 }
     	    }
 
@@ -257,6 +257,12 @@ TString MakeJetImage(TString const& input_path,
     output_file->Write();
     output_file->Close();
     input_file->Close();
+
+    std::cout << "# of charged hadron: " << num_chad << std::endl;
+    std::cout << "# of electron:       " << num_electron << std::endl;
+    std::cout << "# of muon:           " << num_muon << std::endl;
+    std::cout << "# of netural hadron: " << num_nhad << std::endl;
+    std::cout << "# of photon:         " << num_photon << std::endl;
 
 
     std::cout << "Output: " << output_path << std::endl;
@@ -272,10 +278,10 @@ SplitDataset(TString const& input_path,
     std::cout << "In: " << input_path << std::endl;
 
     TFile* input_file = TFile::Open(input_path, "READ");
-    TTree* input_tree = (TTree*) input_file->Get("jetAnalyser");
+    TTree* input_tree = dynamic_cast<TTree*>( input_file->Get("jetAnalyser") );
     const Int_t input_entries = input_tree->GetEntries();
 
-    Int_t label[2] = {0,};
+    Int_t label;
     input_tree->SetBranchAddress("label", &label);
 
     // OUTPUTS
@@ -310,38 +316,71 @@ SplitDataset(TString const& input_path,
     test_tree->SetDirectory(test_file);
 
 
-    const Int_t kNumQuark = input_tree->Draw("pt >> tmp_hist_quark", "label[0] == 1", "goff"); 
+    const Int_t kNumQuark = input_tree->Draw("pt >> tmp_hist_quark", "label == 0", "goff"); 
+    const Int_t kNumGluon = input_tree->Draw("pt >> tmp_hist_gluon", "label == 1", "goff"); 
     gDirectory->Delete("tmp_hist_quark");
+    gDirectory->Delete("tmp_hist_gluon");
+
+    std::cout << "# of jets: " << input_entries << std::endl;
+    std::cout << "# of Quark jets: " << kNumQuark << std::endl;
+    std::cout << "# of Gluon jets: " << kNumGluon << std::endl;
 
     Int_t quark_count = 0;
+    const Int_t kQuarkValStart = static_cast<Int_t>(kNumQuark*0.6);
+    const Int_t kQuarkTestStart = static_cast<Int_t>(kNumQuark*0.8);
+
+    std::cout << "kQuarkValStart: " << kQuarkValStart << std::endl;
+    std::cout << "kQuarkTestStart: " << kQuarkTestStart << std::endl;
+
     Int_t gluon_count = 0;
-    const Int_t kValStart = static_cast<Int_t>(kNumQuark*0.6);
-    const Int_t kTestStart = static_cast<Int_t>(kNumQuark*0.8);
+    const Int_t kGluonValStart = static_cast<Int_t>(kNumGluon*0.6);
+    const Int_t kGluonTestStart = static_cast<Int_t>(kNumGluon*0.8);
+
+    std::cout << "kGluonValStart: " << kGluonValStart << std::endl;
+    std::cout << "kGluonTestStart: " << kGluonTestStart << std::endl;
+
+    const Int_t kPrintFreq = static_cast<Int_t>( input_entries / 10 );
 
     for(Int_t i=0; i < input_entries; i++){
         input_tree->GetEntry(i);
 
+        if( i % kPrintFreq == 0 ) {
+            std::cout << "[" << i / kPrintFreq * 10 << " %]"
+                      << i << "th entry" << std::endl; 
+        }
+
+
         // quark jet
-        if( label[0] == 1 ){
-            if(quark_count < kValStart)
+        if( label == 0 ){
+
+            if(quark_count < kQuarkValStart) {
                 train_tree->Fill();
-            else if ( quark_count < kTestStart )
+            }
+            else if ( quark_count < kQuarkTestStart ) {
                 val_tree->Fill();
-            else
+            }
+            else {
                 test_tree->Fill();
+            }
 
             quark_count++;
         }
-        // gluon jet
-        else{
-            if(gluon_count < kValStart)
+        else if ( label == 1 ){
+
+            if( gluon_count < kGluonValStart ) {
                 train_tree->Fill();
-            else if ( gluon_count < kTestStart )
+            }
+            else if ( gluon_count < kGluonTestStart ) {
                 val_tree->Fill();
-            else
+            }
+            else {
                 test_tree->Fill();
+            }
 
             gluon_count++;
+        }
+        else{
+            std::cout << ":p"  << std::endl;
         }
     }
 
@@ -360,14 +399,10 @@ SplitDataset(TString const& input_path,
     std::cout << "        " << test_path << std::endl;
     std::cout << "\n#################################################" << std::endl;
 
-
-
-
-    
     return std::make_tuple(train_path, val_path, test_path);
 }
 
-void ScaleImage(Float_t image[], Int_t size, Float_t scale_factor){
+inline void ScaleImage(Float_t image[], Int_t size, Float_t scale_factor){
     std::transform(image,
                    image+size,
                    image,
