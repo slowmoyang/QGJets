@@ -48,16 +48,30 @@ def factorized_conv(x, filters, kernel_size, factorization, strides=(1,1), **kar
     return x
 
 
-def pool_proj(x, filters, pooling=AveragePooling2D, **kargs):
-    x = pooling(pool_size=(3,3), strides=(1,1), padding="SAME")(x)
+def pool_proj(x, filters, avg_pool=True, **kargs):
+    pool_kargs = {"pool_size": (3, 3), "strides": (1, 1), "padding": "SAME"}
+    pool = pool.lower()
+    if avg_pool:
+        x = AveragePooling2D(pool_kargs)(x)
+    else:
+        x = MaxPooling2D(pool_kargs)(x)
     x = conv_unit(x, filters=filters, kernel_size=(1,1), **kargs)
     return x
 
 
 
+
+
+def inception_v1(x, filters=None):
+    pass
+
+
+
+
+
 def inception_a(x,
                 filters=None,
-                order=["conv", "bn", "conv"],
+                order=["conv", "bn", "activation"],
                 **kargs):
     """
     For 35 X 35 grid modules of the pure Inception-v4 network.

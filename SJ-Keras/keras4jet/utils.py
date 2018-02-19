@@ -6,8 +6,12 @@ import os
 import datetime
 import json
 import argparse
+<<<<<<< HEAD
 import keras.backend as K
 import numpy as np
+=======
+import warnings
+>>>>>>> 5722c0503295ae219388db2df2afaa1904078ffb
 
 from tensorflow.python.client import device_lib
 
@@ -54,8 +58,47 @@ def write_args_to_json_file(args, log_dir):
         json.dump(args_dict, f, indent=4, sort_keys=True)
 
 
+class Config(object):
+    def __init__(self, dpath, mode="write"):
+        self.path = os.path.join(dpath, "args.json")
+        self._mode = mode.lower()
+        if self._mode == "write":
+            self.log = {}
+        elif self._mode == "read":
+            self.log = self.load(self.path)
+
+    def update(self, data):
+        if isinstance(data, dict):
+            self.log.update(data)
+        elif isinstance(data, argparse.Namespace):
+            self.log.update(vars(data))
+
+    def __setitem__(self, key, item):
+        self.log[key] = item
+
+    def __getitem__(self, key):
+        return self.log[key]
+
+    def save(self):
+        with open(self.path, "w") as f:
+            json.dump(self.log, f, indent=4, sort_keys=True)
+
+    def load(self, path):
+        log = open(path).read()
+        log = json.loads(log)
+        log = dict(log)
+        return log
+
+    def finish(self):
+        self.save() 
+
+
 class Logger(object):
     def __init__(self, dpath, mode="write"):
+        warnings.warn(
+            "In the future The name of the logger will be changed to config.",
+            FutureWarning)
+
         self.path = os.path.join(dpath, "args.json")
         self._mode = mode.lower()
         if self._mode == "write":

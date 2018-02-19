@@ -23,7 +23,7 @@ from keras4jet.layers.layer_utils import conv_unit
 
 
 
-def _inception_resnet(x, filter_concat, scaling_factor, filters=None, activation="relu"):
+def _inception_resnet(x, filter_concat, filters, scaling_factor, activation="relu"):
     """
     * filter-expansion layer
 
@@ -33,15 +33,11 @@ def _inception_resnet(x, filter_concat, scaling_factor, filters=None, activation
       before their being added to the accumulated layer activations
     """
     assert scaling_factor > 0 and scaling_factor <= 1
-    channel_axis = layer_utils.get_channel_axis()
-    if filters is None:
-        in_channels = K.int_shape(x)[channel_axis]
-        filters = in_channels
+
 
     filter_expansion = Conv2D(filters=filters, kernel_size=1)(filter_concat) 
 
-    activation_scaling = Lambda(
-        lambda tensor, scaling_factor: scaling_factor * tensor,
+    activation_scaling = Lambda(lambda tensor, scaling_factor: scaling_factor * tensor,
         output_shape=K.int_shape(filter_expansion)[1:],
         arguments={'scaling_factor': scaling_factor})(filter_expansion)
 
@@ -52,45 +48,6 @@ def _inception_resnet(x, filter_concat, scaling_factor, filters=None, activation
     x = Activation(activation)(y)
 
     return x
-
-
-def _residual_a(x,
-                filters=None,
-                order=["conv", "bn", "activation"],
-                **kargs):
-    """
-    for 35 x 35 grid (Inception-ResNet-A) module of Inception-ResNet-v1 network
-
-    Input shape: [256, 35, 35]
-    Output shape: [256, 35, 35]
-    """
-    channel_axis = layer_utils.get_channel_axis()
-    if filters is None:
-        in_channels = K.int_shape(x)[channel_axis] 
-        unit_filters = int(in_channels/8)
-        filters = {
-            "branch0": unit_filters,
-            "branch1_0": unit_filters,
-            "branch1_1": unit_filters,
-            "branch2_0": unit_filters,
-            "branch2_1": unit_filters,
-            "branch2_2": unit_filters,
-        }
-
-    # branch
-    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"], order=order, **kargs)
-    # branch
-    x1 = conv_unit(x, kernel_size=1, filters=filters["branch1_0"], order=order, **kargs)
-    x1 = conv_unit(x1, kernel_size=3, filters=filters["branch1_1"], order=order, **kargs)
-    # branch
-    x2 = conv_unit(x, kernel_size=1, filters=filters["branch2_0"], order=order, **kargs)
-    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_1"], order=order, **kargs)
-    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_2"], order=order, **kargs)
-    # filter concat
-    filter_concat = Concatenate(axis=channel_axis)([x0, x1, x2])
-    return filter_concat
-
-
 
 def inception_resnet_a(x,
                        filters=None,
@@ -103,9 +60,12 @@ def inception_resnet_a(x,
     Input shape: [256, 35, 35]
     Output shape: [256, 35, 35]
     """
+    channel_axis = layer_utils.get_channel_axis()
     if filters is None:
         in_channels = K.int_shape(x)[channel_axis] 
+
         unit_filters = int(in_channels/8)
+
         filters = {
             "branch0": unit_filters,
             "branch1_0": unit_filters,
@@ -115,41 +75,27 @@ def inception_resnet_a(x,
             "branch2_2": unit_filters,
             "filter_expansion": in_channels
         }
-    residual = _residual_a(x, filters, order, **kargs)
-    out = _inception_resnet(x, residual, filters["filter_expansion"], scaling_factor)
+
+
+    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"], order=order, **kargs)
+
+    x1 = conv_unit(x, kernel_size=1, filters=filters["branch1_0"], order=order, **kargs)
+    x1 = conv_unit(x1, kernel_size=3, filters=filters["branch1_1"], order=order, **kargs)
+
+
+
+    x2 = conv_unit(x, kernel_size=1, filters=filters["branch2_0"], order=order, **kargs)
+    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_1"], order=order, **kargs)
+    x2 = conv_unit(x2, kernel_size=3, filters=filters["branch2_2"], order=order, **kargs)
+
+    filter_concat = Concatenate(axis=channel_axis)([x0, x1, x2])
+
+    out = _inception_resnet(
+        x, filter_concat, filters["filter_expansion"], scaling_factor)
+
     return out
 
 
-
-def _residual_b(x,
-                filters,
-                order=["conv", "bn", "activation"],
-                **kargs):
-    """
-    for 17 x 17 grid (Inception-ResNet-B) module of Inception-ResNet-v1 network
-
-    Input shape: [896, 17, 17]
-    Output shape: [896, 17, 17]
-    """
-    channel_axis = layer_utils.get_channel_axis()
-    if filters is None:
-        in_channels = K.int_shape(x)[channel_axis]
-        filters = {
-            "branch0": int(in_channels / 7),
-            "branch1_0": int(in_channels / 7),
-            "branch1_1": int(in_channels / 7),
-            "branch1_2": int(in_channels / 7),
-        }
-
-    # branch0
-    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"], order=order, **kargs)
-    # branch1
-    x1 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch1_0"], order=order, **kargs)
-    x1 = conv_unit(x, kernel_size=(7, 1), filters=filters["branch1_1"], order=order, **kargs)
-    x1 = conv_unit(x, kernel_size=(1, 7), filters=filters["branch1_2"], order=order, **kargs)
-    # filter concat
-    residual = Concatenate(axis=channel_axis)([x0, x1])
-    return residual
 
 
 def inception_resnet_b(x,
@@ -164,6 +110,7 @@ def inception_resnet_b(x,
     Output shape: [896, 17, 17]
     """
     channel_axis = layer_utils.get_channel_axis()
+
     if filters is None:
         in_channels = K.int_shape(x)[channel_axis]
         filters = {
@@ -173,42 +120,17 @@ def inception_resnet_b(x,
             "branch1_2": int(in_channels / 7),
             "filter_expansion": in_channels
         }
-    residual = _residual_b(x, filters, order, **kargs)
-    out = _inception_resnet(x, residual, filters["filter_expansion"], scaling_factor)
-    return out 
 
-
-
-
-def _residual_c(x,
-                filters,
-                order=["conv", "bn", "activation"],
-                **kargs):
-    """
-    8x8 grid (Inception-ResNet-C) moduleof Inception-ResNet-v1 network.
-
-    In: [1792, 8, 8]
-    Out: [1792, 8, 8]
-    """
-    channel_axis = layer_utils.get_channel_axis()
-    if filters is None:
-        in_channels = K.int_shape(x)[channel_axis]
-        unit_filters = int( ( 3 / 28 ) * in_channels )
-        filters = {
-            "branch0": unit_filters,
-            "branch1_0": unit_filters,
-            "branch1_1": unit_filters,
-            "branch1_2": unit_filters,
-        }
-    # branch 0
     x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"], order=order, **kargs)
-    # branch 1
+
     x1 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch1_0"], order=order, **kargs)
-    x1 = conv_unit(x, kernel_size=(1, 3), filters=filters["branch1_1"], order=order, **kargs)
-    x1 = conv_unit(x, kernel_size=(3, 1), filters=filters["branch1_2"], order=order, **kargs)
-    # filter concat
+    x1 = conv_unit(x, kernel_size=(7, 1), filters=filters["branch1_1"], order=order, **kargs)
+    x1 = conv_unit(x, kernel_size=(1, 7), filters=filters["branch1_2"], order=order, **kargs)
+
     filter_concat = Concatenate(axis=channel_axis)([x0, x1])
-    return filter_concat
+
+    out = _inception_resnet(x, filter_concat, filters["filter_expansion"], scaling_factor)
+    return out 
 
 
 def inception_resnet_c(x,
@@ -223,6 +145,7 @@ def inception_resnet_c(x,
     Out: [1792, 8, 8]
     """
     channel_axis = layer_utils.get_channel_axis()
+
     if filters is None:
         in_channels = K.int_shape(x)[channel_axis]
         unit_filters = int( ( 3 / 28 ) * in_channels )
@@ -233,8 +156,16 @@ def inception_resnet_c(x,
             "branch1_2": unit_filters,
             "filter_expansion": in_channels
         }
-    residual = _residual_c(x, filters, order, **kargs)
-    out = _inception_resnet(x, residual, filters["filter_expansion"], scaling_factor)
+
+    x0 = conv_unit(x, kernel_size=1, filters=filters["branch0"], order=order, **kargs)
+
+    x1 = conv_unit(x, kernel_size=(1, 1), filters=filters["branch1_0"], order=order, **kargs)
+    x1 = conv_unit(x, kernel_size=(1, 3), filters=filters["branch1_1"], order=order, **kargs)
+    x1 = conv_unit(x, kernel_size=(3, 1), filters=filters["branch1_2"], order=order, **kargs)
+
+    filter_concat = Concatenate(axis=channel_axis)([x0, x1])
+
+    out = _inception_resnet(x, filter_concat, filters["filter_expansion"], scaling_factor)
     return out 
 
 
