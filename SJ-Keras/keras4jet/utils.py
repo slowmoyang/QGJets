@@ -6,12 +6,9 @@ import os
 import datetime
 import json
 import argparse
-<<<<<<< HEAD
 import keras.backend as K
 import numpy as np
-=======
 import warnings
->>>>>>> 5722c0503295ae219388db2df2afaa1904078ffb
 
 from tensorflow.python.client import device_lib
 
