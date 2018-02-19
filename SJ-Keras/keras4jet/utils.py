@@ -6,6 +6,8 @@ import os
 import datetime
 import json
 import argparse
+import keras.backend as K
+import numpy as np
 
 from tensorflow.python.client import device_lib
 
@@ -112,3 +114,7 @@ def get_dataset_paths(dpath, data="dijet"):
             break
 
     return datasets
+
+
+def get_size_of_model(model):
+    return sum([np.prod(K.get_value(w).shape) for w in model.trainable_weights])
