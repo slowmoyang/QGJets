@@ -6,27 +6,31 @@ HIGH_PT=$3
 RUN_SUFFIX=$4
 OUT_DIR=$5
 
-echo $0
-echo $1
-echo $2
-echo $3
-echo $4
+echo "FINAL: ${FINAL}"
+echo "LOW_PT: ${LOW_PT}"
+echo "HIGH_PT: ${HIGH_PT}"
+echo "RUN_SUFFIX: ${RUN_SUFFIX}"
+echo "OUT_DIR: ${OUT_DIR}"
 
 RUN="pt_${LOW_PT}_${HIGH_PT}_${RUN_SUFFIX}"
 
-if [ $FINAL = "qq" ]
+if [ "$FINAL" == "qq" ]
 then
     PROCESS_FINAL="q q"
     CARD_SUFFIX="jj"
-elif [ $FINAL = "gg" ]
+elif [ "$FINAL" == "gg" ]
 then
     PROCESS_FINAL="g g"
     CARD_SUFFIX="jj"
-elif [ $FINAL = "zq" ]
+elif [ "$FINAL" == "qg" -o "$FINAL" == "gq"  ]
+then
+    PROCESS_FINAL="q g"
+    CARD_SUFFIX="jj"
+elif [ "$FINAL" == "zq" ]
 then
     PROCESS_FINAL="z q"
     CARD_SUFFIX="zj"
-elif [ $FINAL = "zg" ]
+elif [ "$FINAL" == "zg" ]
 then
     PROCESS_FINAL="z g"
     CARD_SUFFIX="zj"
@@ -44,12 +48,12 @@ ADDITIONAL_CARDS="run_card_${CARD_SUFFIX}.dat"
 
 if [ ${CARD_SUFFIX} = "jj" ]
 then
-    python run_card.py ${ADDITIONAL_CARDS} \
+    python modify_run_card.py ${ADDITIONAL_CARDS} \
         ptj1min=${LOW_PT}.0 ptj2min=${LOW_PT}.0 \
-        ptj1max=${HIGH_PT}.0 ptj2max=${HIGH_PT}
+        ptj1max=${HIGH_PT}.0 ptj2max=${HIGH_PT}.0
 elif [ ${CARD_SUFFIX} = "zj" ]
 then
-    python run_card.py ${ADDITIONAL_CARDS} \
+    python modify_run_card.py ${ADDITIONAL_CARDS} \
         ptj1min=${LOW_PT}.0 ptj1max=${HIGH_PT}.0
 else
     echo ":p"
@@ -68,6 +72,8 @@ $ADDITIONAL_CARDS
 "
 
 echo "$CMD" | singularity run ~iwatson/Images/Madgraph.img
+# mv -v $NAME ${OUT_DIR}
 mv $NAME/Events/run_01/tag_1_delphes_events.root ${OUT_DIR}/$NAME.root
+mv $NAME/crossx.html ${OUT_DIR}/${NAME}_crossx.html
 rm -rf $NAME
 
