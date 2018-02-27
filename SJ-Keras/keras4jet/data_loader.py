@@ -36,7 +36,7 @@ class DataLoader(object):
         
     def __len__(self):
         return int(self.tree.GetEntries())
-    
+
     def _get_data(self, idx):
         raise NotImplementedError("")
 
@@ -116,7 +116,6 @@ class ImageDataLoader(DataLoader):
         self.x_shape = x_shape
         self.y = y
 
-    @jit 
     def _get_data(self, idx):
         self.tree.GetEntry(idx)
         example = dict()
@@ -129,6 +128,7 @@ class ImageDataLoader(DataLoader):
         example["y"][int(getattr(self.tree, self.y))] = 1
 
         return example
+
 
 
 class SeqDataLoader(DataLoader):
@@ -156,7 +156,6 @@ class SeqDataLoader(DataLoader):
         else:
             raise ValueError("maxlen")
 
-    @jit
     def _get_data(self, idx): 
         self.tree.GetEntry(idx)
         example = dict()
