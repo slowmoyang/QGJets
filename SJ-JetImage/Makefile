@@ -1,4 +1,4 @@
-PROGS := full_steps
+PROGS := full_steps SummedJetImage
 all : $(PROGS)
 
 % : %.cc
