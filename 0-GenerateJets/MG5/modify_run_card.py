@@ -17,6 +17,7 @@ def parse_line(line):
     else:
         if "!" in line:
             value_var, comment = line.split("!")
+            comment = comment.strip()
         else:
             value_var = line
             comment = None
@@ -26,8 +27,8 @@ def parse_line(line):
             value, var = value_var.split("=")
         # comment starting wtih "!"
         else:
-            value=None
-            var=None
+            value = None
+            var = None
 
     return [value, var, comment]
 
@@ -46,7 +47,7 @@ def write_line(entry):
 
     return line
 
-def replace(source_file_path, **kargs):
+def modify_run_card(source_file_path, **kargs):
 
     fh, target_file_path = mkstemp()
 
@@ -69,10 +70,6 @@ def replace(source_file_path, **kargs):
 
     move(target_file_path, source_file_path)
 
-def main():
-    replace(args.path)
-
-
 if __name__ == '__main__':
     path = sys.argv[1]
 
@@ -81,4 +78,4 @@ if __name__ == '__main__':
 
 
     kargs = dict(x.split('=', 1) for x in sys.argv[2:])
-    replace(path, **kargs)
+    modify_run_card(path, **kargs)
