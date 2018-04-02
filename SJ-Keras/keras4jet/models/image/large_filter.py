@@ -32,7 +32,7 @@ def build_a_model(input_shape,
                   kernel_size=11,
                   num_conv=3,
                   activation="relu",
-                  padding="valid"):
+                  padding="SAME"):
     inputs = Input(input_shape)
 
     filters = 32
@@ -44,7 +44,7 @@ def build_a_model(input_shape,
         if (i != 0) and (i % 2 == 0):
             out = MaxPooling2D(2)(out)
 
-    out = Conv2D(filters=num_classes, kernel_size=2, strides=1, padding="SAME")(out)
+    out = Conv2D(filters=num_classes, kernel_size=1, strides=1, padding="SAME")(out)
     out = GlobalAveragePooling2D()(out)
     out = Activation("softmax")(out)
 

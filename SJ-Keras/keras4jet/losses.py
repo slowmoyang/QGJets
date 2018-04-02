@@ -13,3 +13,7 @@ def margin_loss(y_true, y_pred):
 def reco_loss(x, reco):
     return K.mean(K.square(x - reco), axis=[1, 2, 3])
 
+
+def softmax_loss(y_true, y_pred):
+    return -1 * K.mean(K.log(K.sum(y_true * y_pred, axis=-1) + K.epsilon()))
+

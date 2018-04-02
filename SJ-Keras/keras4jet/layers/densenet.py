@@ -27,11 +27,9 @@ from keras.layers import GlobalAveragePooling2D
 if __name__ == "__main__":
     import layer_utils
     from layer_utils import conv_unit
-    from layer_utils import factorized_conv
 else:
     from . import layer_utils
     from keras4jet.layers.layer_utils import conv_unit
-    from .layer_utils import factorized_conv
 
 
 

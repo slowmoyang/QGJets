@@ -10,8 +10,9 @@ from keras.preprocessing.sequence import pad_sequences
 import warnings
 
 
-class DataLoader(object):
+# TODO rearrange args
 
+class DataLoader(object):
     def __init__(self,
                  path,
                  example_list,
@@ -110,6 +111,9 @@ class DataLoader(object):
 
 
 class FeaturesDataLoader(DataLoader):
+    __slots__ = ("root_file", "tree", "path", "example_list", "extra",
+                 "num_classes", "batch_size", "cyclic", "tree_name",
+                 "keys", "get_data", "_start", "x", "y")
     def __init__(self,
                  path,
                  x,
@@ -128,8 +132,6 @@ class FeaturesDataLoader(DataLoader):
         self.x = x
         self.y = y
 
-        extra = set(self.keys).difference({"x", "y"})
-
 
     def _get_data(self, idx):
         self.tree.GetEntry(idx)
@@ -144,19 +146,11 @@ class FeaturesDataLoader(DataLoader):
 
         return example
 
-    def _get_data_including_extra(self, idx):
-        self.tree.GetEntry(idx)
-        example = dict()
-
-        example["x"] = np.array(
-            object=[getattr(self.tree, each) for each in self.x],
-            dtype=np.float32)
-
-        example["y"] = np.zeros(self.num_classes, dtype=np.int64)
-        example["y"][int(getattr(self.tree, self.y))] = 1
-
 
 class ImageDataLoader(DataLoader):
+    __slots__ = ("root_file", "tree", "path", "example_list", "extra",
+                 "num_classes", "batch_size", "cyclic", "tree_name",
+                 "keys", "get_data", "_start", "x", "x_shape", "y")
     def __init__(self,
                  path,
                  x,
@@ -194,15 +188,14 @@ class ImageDataLoader(DataLoader):
 class SeqDataLoader(DataLoader):
     def __init__(self,
                  path,
+                 example_list,
                  batch_size,
-                 maxlen=None,
-                 cyclic=True,
-                 extra=[],
-                 y="label",
-                 num_classes=2,
-                 tree_name="jetAnalyser"):
-
-        example_list = ["x_daus", "x_glob", "y"]
+                 maxlen,
+                 cyclic,
+                 extra,
+                 y,
+                 num_classes,
+                 tree_name):
 
         super(SeqDataLoader, self).__init__(
             path, example_list, extra, num_classes, batch_size, cyclic, tree_name)
@@ -219,6 +212,68 @@ class SeqDataLoader(DataLoader):
                     maxlen, max_n_dau))
         else:
             raise ValueError("maxlen")
+
+    def _get_data(self, idx): 
+        raise NotImplementedError("")
+        
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            if key < 0 or key >= len(self):
+                raise IndexError
+            example = self.get_data(key)
+            # CMS AN-17-188.
+            # Sec. 3.1 Slim jet DNN architecture (p. 11 / line 196-198)
+            # When using recurrent networks the ordering is important, thus
+            # our underlying assumption is that the most displaced (in case
+            # of displacement) or the highest pT candidates matter the most.
+            example["x_daus"] = np.expand_dims(example["x_daus"], axis=0)
+            example["x_daus"] = pad_sequences(
+                sequences=example["x_daus"],
+                maxlen=self.maxlen,
+                dtype=np.float32,
+                padding="pre",
+                truncating="pre",
+                value=0.)
+            example["x_daus"] = example["x_daus"].reshape(example["x_daus"].shape[1:])
+            return example
+        elif isinstance(key, slice):
+            batch = {key: [] for key in self.keys}
+            for idx in xrange(*key.indices(len(self))):
+                example = self.get_data(idx)
+                for key in self.keys:
+                    batch[key].append(example[key])
+            batch["x_daus"] = pad_sequences(
+                sequences=batch["x_daus"],
+                maxlen=self.maxlen,
+                dtype=np.float32,
+                padding="pre",
+                truncating="pre",
+                value=0.)
+            batch = {key: np.array(value) for key, value in batch.items()}
+            return batch
+        else:
+            raise TypeError
+
+
+class AK4DataLoader(SeqDataLoader):
+    __slots__ = ("root_file", "tree", "path", "example_list", "extra",
+                 "num_classes", "batch_size", "cyclic", "tree_name",
+                 "keys", "get_data", "_start", "maxlen", "y")
+    def __init__(self,
+                 path,
+                 batch_size,
+                 maxlen=None,
+                 cyclic=True,
+                 extra=[],
+                 y="label",
+                 num_classes=2,
+                 tree_name="jetAnalyser"):
+
+        example_list = ["x_daus", "x_glob", "y"]
+
+        super(AK4DataLoader, self).__init__(
+            path, example_list, batch_size, maxlen, cyclic, extra, y,
+            num_classes, tree_name)
 
     def _get_data(self, idx): 
         self.tree.GetEntry(idx)
@@ -260,40 +315,3 @@ class SeqDataLoader(DataLoader):
 
         return example
 
-    def __getitem__(self, key):
-        if isinstance(key, int):
-            if key < 0 or key >= len(self):
-                raise IndexError
-            example = self.get_data(key)
-            # CMS AN-17-188.
-            # Sec. 3.1 Slim jet DNN architecture (p. 11 / line 196-198)
-            # When using recurrent networks the ordering is important, thus
-            # our underlying assumption is that the most displaced (in case
-            # of displacement) or the highest pT candidates matter the most.
-            example["x_daus"] = np.expand_dims(example["x_daus"], axis=0)
-            example["x_daus"] = pad_sequences(
-                sequences=example["x_daus"],
-                maxlen=self.maxlen,
-                dtype=np.float32,
-                padding="pre",
-                truncating="pre",
-                value=0.)
-            example["x_daus"] = example["x_daus"].reshape(example["x_daus"].shape[1:])
-            return example
-        elif isinstance(key, slice):
-            batch = {key: [] for key in self.keys}
-            for idx in xrange(*key.indices(len(self))):
-                example = self.get_data(idx)
-                for key in self.keys:
-                    batch[key].append(example[key])
-            batch["x_daus"] = pad_sequences(
-                sequences=batch["x_daus"],
-                maxlen=self.maxlen,
-                dtype=np.float32,
-                padding="pre",
-                truncating="pre",
-                value=0.)
-            batch = {key: np.array(value) for key, value in batch.items()}
-            return batch
-        else:
-            raise TypeError

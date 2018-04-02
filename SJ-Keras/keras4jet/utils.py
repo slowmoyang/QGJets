@@ -23,6 +23,13 @@ class Directory(object):
         path = os.path.join(self.path, name)
         setattr(self, name, Directory(path, creation=self._creation))
 
+    def get_entries(self, full_path=True):
+        entries = os.listdir(self.path)
+        if full_path:
+            entries = map(lambda each: os.path.join(self.path, each), entries)
+        return entries
+
+
 
 def get_log_dir(path, creation=True):
     # mkdir
@@ -45,7 +52,7 @@ def get_saved_model_paths(dpath):
     saved_models.sort()
     saved_models = map(foo, saved_models)
     return saved_models
-    
+
 
 def write_args_to_json_file(args, log_dir):
     args_dict = vars(args)
@@ -57,21 +64,25 @@ def write_args_to_json_file(args, log_dir):
 
 class Config(object):
     def __init__(self, dpath, mode="write"):
-        self.path = os.path.join(dpath, "args.json")
+        self.path = os.path.join(dpath, "config.json")
         self._mode = mode.lower()
         if self._mode == "write":
             self.log = {}
         elif self._mode == "read":
             self.log = self.load(self.path)
+            for key, value in self.log.iteritems():
+                setattr(self, key, value)
 
     def update(self, data):
-        if isinstance(data, dict):
-            self.log.update(data)
-        elif isinstance(data, argparse.Namespace):
-            self.log.update(vars(data))
+        if isinstance(data, argparse.Namespace):
+            data = vars(data)
+        self.log.update(data)
+        for key, value in data.iteritems():
+            setattr(self, key, value)
 
     def __setitem__(self, key, item):
         self.log[key] = item
+        setattr(self, key, item)
 
     def __getitem__(self, key):
         return self.log[key]

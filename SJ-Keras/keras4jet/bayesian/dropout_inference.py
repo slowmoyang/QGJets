@@ -33,23 +33,16 @@ class MCDropout(Dropout):
 
 
 class ConcreteDropout(Wrapper):
-    __slots__ = ("layer",
-                 "weight_regularizer",
-                 "dropout_regularizer",
-                 "init_min",
-                 "init_max",
-                 "is_mc_dropout",
-                 "supports_masking",
-                 "p_logit",
-                 "p",
-                 "input_spec")
-
+    """
+    Ref. https://github.com/yaringal/ConcreteDropout
+    """
     def __init__(self,
                  layer,
                  weight_regularizer=1e-6,
                  dropout_regularizer=1e-5,
                  init_min=0.1,
                  init_max=0.1,
+                 temperature=0.1,
                  is_mc_dropout=True,
                  **kwargs):
         assert not kwargs.has_key("kernel_regularizer")
@@ -61,6 +54,8 @@ class ConcreteDropout(Wrapper):
 
         self.init_min = np.log(init_min) - np.log(1. - init_min)
         self.init_max = np.log(init_max) - np.log(1. - init_max)
+
+        self.temperature = temperature
 
         self.supports_masking = True
         self.p_logit = None
@@ -89,6 +84,14 @@ class ConcreteDropout(Wrapper):
         weight = self.layer.kernel
         kernel_regularizer = self.weight_regularizer * K.sum(K.square(weight)) / (1.0 - self.p)
 
+        dropout_regularizer = self.p * K.log(self.p)
+        dropout_regularizer += (1. - self.p) * K.log(1. - self.p)
+        dropout_regularizer *= self.dropout_regularizer * input_dim
+
+        regularizer = K.sum(kernel_regularizer + dropout_regularizer)
+        self.layer.add_loss(regularizer)
+
+
     def compute_output_shape(self, input_shape):
         return self.layer.compute_output_shape(input_shape)
 
@@ -101,11 +104,19 @@ class ConcreteDropout(Wrapper):
         """
         eps = K.cast_to_floatx(K.epsilon())
 
-        temperature = 0.1
+        # Unifrom noise
+        u = K.random_uniform(shape=K.shape(x))
 
-        drop_prob = K.random_uniform(shape=K.shape(x))
+        # the Concrete distribution relaxation 
+        z_tilde = (
+            K.log(self.p + eps)
+            - K.log(1.0 - self.p + eps)
+            + K.log(u + eps)
+            - K.log(1.0 - u + eps)
+        )
+        z_tilde = K.sigmoid(z_tilde / self.temperature)
 
-        drop_prob = K.sigmoid(drop_prob / temperature) 
+        # Random tensor
         random_tensor = 1.0 - drop_prob
 
         retain_prob = 1.0 - self.p
@@ -125,3 +136,13 @@ class ConcreteDropout(Wrapper):
                 x=relaxed_dropped_inputs,
                 alt=self.layer.call(inputs),
                 training=training)
+
+
+def compute_init_regularizer(num_instances, l=1e-4):
+    """
+    Args:
+      l: A float. prior lengthscale
+    """
+    wd = l**2.0 / num_instances
+    dd = 2.0 / num_instances 
+    return wd, dd

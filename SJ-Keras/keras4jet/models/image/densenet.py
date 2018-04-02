@@ -24,13 +24,11 @@ import tensorflow as tf
 #    sys.path.append("../../layers")
 #    import layer_utils
 #    from layer_utils import conv_unit
-#    from layer_utils import factorized_conv
 #    from densenet import dense_block
 #    from densenet import transition_layer
 #else:
 from keras4jet.layers import layer_utils
 from keras4jet.layers.layer_utils import conv_unit
-from keras4jet.layers.layer_utils import factorized_conv
 from keras4jet.layers.densenet import dense_block
 from keras4jet.layers.densenet import transition_layer
 

@@ -146,9 +146,13 @@ class ROCMeter(object):
     def finish(self):
         self.compute_roc()
 
+        step = str(self.step)
+        if step.isdigit():
+            step = step.zfill(6)
+
         filename_format = '{prefix}roc_step-{step}_auc-{auc:.3f}.{ext}'.format(
             prefix=self._prefix,
-            step=str(self.step).zfill(6),
+            step=step,
             auc=self.auc,
             ext='%s'
         )

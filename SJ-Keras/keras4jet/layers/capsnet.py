@@ -1,5 +1,10 @@
-import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+if __name__ == "__main__":
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import keras.backend as K
 import tensorflow as tf
@@ -16,13 +21,6 @@ def squash(capsules):
     squared_norm = K.sum(K.square(capsules), axis=-1, keepdims=True)
     scale = squared_norm / (1 + squared_norm) / K.sqrt(squared_norm + K.epsilon())
     return scale * capsules
-
-class Length(Layer):
-    def call(self, inputs, **kwargs):
-        return K.sqrt(K.sum(K.square(inputs), -1))
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[:-1]
 
 class Length(Layer):
     def call(self, inputs, **kwargs):
@@ -58,6 +56,9 @@ class Masking(Layer):
 
 
 class CapsuleLayer(Layer):
+    """
+    Ref. https://github.com/XifengGuo/CapsNet-Keras
+    """
     def __init__(self, num_capsule, dim_capsule, num_routings=3,
                  kernel_initializer='glorot_uniform',
                  **kwargs):

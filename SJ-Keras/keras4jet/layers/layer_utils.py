@@ -12,7 +12,10 @@ def get_channel_axis():
     channel_axis = 1 if K.image_data_format() == "channels_first" else -1
     return channel_axis
 
-
+def get_channels(x):
+    channel_axis = get_channel_axis()
+    num_channels = K.int_shape(x)[channel_axis]
+    return num_channels
 
 def conv_unit(x,
               filters,
@@ -30,7 +33,7 @@ def conv_unit(x,
 
     channel_axis = get_channel_axis()
 
-    conv_keys = ["strides", "padding", "dilation_rate", "activation",
+    conv_keys = ["strides", "padding", "dilation_rate",
                  "use_bias", "kernel_initializer", "bias_initializer",
                  "kernel_regularizer", "bias_regularizer",
                  "activity_regularizer", "kernel_constraint",
@@ -62,6 +65,7 @@ def conv_unit(x,
     if not conv_kargs.has_key("padding"):
         conv_kargs["padding"] = "same"
 
+    activation = "relu" if not kargs.has_key("activation") else kargs["activation"]
 
     node_dict = {
         "conv": Conv2D(filters, kernel_size, **conv_kargs),
@@ -74,24 +78,10 @@ def conv_unit(x,
 
     return x
 
-def factorized_conv(x, filters, kernel_size, strides=(1, 1), asym=True, **kargs):
-    kernel_size = conv_utils.normalize_tuple(kernel_size, 2, 'kernel_size')
-    strides = conv_utils.normalize_tuple(strides, 2, 'strides')
 
-    assert kernel_size[0] == kernel_size[1]
-    k = kernel_size[0]
-
-    assert bool(k%2)
-
-    if asym:
-        x = conv_unit(x, filters, kernel_size=(1, k), strides=strides[1], **kargs)
-        x = conv_unit(x, filters, kernel_size=(k, 1), strides=strides[0], **kargs)
-    else:
-        num_conv = int((k - 1) / 2)
-        for _ in range(num_conv):
-            x = conv_unit(x, filters, kernel_size=(3,3), strides=strides, **kargs)
-    return x
-
-
-
-
+def attach_shortcut(residual_fn):
+    def _residual_unit(x):
+        F = residual_fn(x)
+        y = Add()([x, F])
+        return y
+    return _residual_fn
