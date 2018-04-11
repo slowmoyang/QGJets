@@ -16,30 +16,29 @@ template<typename T>
 inline bool IsInfty(T i) {return std::abs(i) == std::numeric_limits<T>::infinity();}
 
 // Step1
-TString AttachLabel(const TString& input_path, const TString& output_dir){
+TString AttachLabel(const TString& in_path,
+                    const TString& out_dir,
+                    const TString& tree_name="jetAnalyser")
+{
 
-    std::cout << "In: " << input_path << std::endl;
+    std::cout << "In: " << in_path << std::endl;
 
-    // Input
-    TFile* input_file = TFile::Open(input_path, "READ");
-    TTree* input_tree = dynamic_cast<TTree*>( input_file->Get("jetAnalyser") );
+    // In
+    TFile* in_file = TFile::Open(in_path, "READ");
+    TTree* in_tree = dynamic_cast<TTree*>( in_file->Get(tree_name) );
 
-    int kInputEntries = input_tree->GetEntries();
+    Int_t kInEntries = in_tree->GetEntries();
 
-    TString input_name = gSystem->BaseName(input_path);
+    TString in_name = gSystem->BaseName(in_path);
 
-    bool is_qq = input_name.Contains("qq");
-    bool is_gg = input_name.Contains("gg");
-    bool is_zq = input_name.Contains("zq");
+    bool is_qq = in_name.Contains("qq");
+    bool is_gg = in_name.Contains("gg");
+    bool is_zq = in_name.Contains("zq");
 
     bool is_quark_jets = is_qq or is_zq;
     bool is_dijet = is_qq or is_gg;
 
-    TString selection;
-    if( is_dijet )
-        selection = "balanced";
-    else
-        selection = "pass_Zjets";
+    TString selection = is_dijet ? "balanced" : "pass_Zjets";
 
     // Temporary file
     /**************************************************************** 
@@ -53,17 +52,17 @@ TString AttachLabel(const TString& input_path, const TString& output_dir){
      *      TFile *f = new TFile(...)
      *      TTree *T = new TTree(...)
      ***********************************************************/
-    TString temp_path = input_path.Copy();
+    TString temp_path = in_path.Copy();
     temp_path.Insert(temp_path.Last('.'), "_TEMPORARY"); 
     TFile* temp_file = TFile::Open(temp_path, "RECREATE");
-    TTree* selected_tree = input_tree->CopyTree(selection);
+    TTree* selected_tree = in_tree->CopyTree(selection);
     selected_tree->SetDirectory(temp_file);
 
-    const int selected_entries = selected_tree->GetEntries();
+    const Int_t kSelectedEntries = selected_tree->GetEntries();
 
     // variables for checking infnite value.
-    float ptD, axis1, axis2;
-    int nmult, cmult;
+    Float_t ptD, axis1, axis2;
+    Int_t nmult, cmult;
     selected_tree->SetBranchAddress("ptD", &ptD);
     selected_tree->SetBranchAddress("axis1", &axis1);
     selected_tree->SetBranchAddress("axis2", &axis2);
@@ -72,26 +71,26 @@ TString AttachLabel(const TString& input_path, const TString& output_dir){
 
     TString status = TString::Format(
         "NumGoodJets/NumTotalJets: %d/%d (%.2f) << std::endl",
-        selected_entries,
-        kInputEntries,
-        float(selected_entries) / kInputEntries);
+        kSelectedEntries,
+        kInEntries,
+        Float_t(kSelectedEntries) / kInEntries);
     std::cout << status << std::endl;
 
 
     // Output
-    TString output_name = input_name;
-    output_name.ReplaceAll("default", selection);
-    TString output_path = gSystem->ConcatFileName(output_dir, output_name);
+    TString out_name = in_name;
+    out_name.ReplaceAll("default", selection);
+    TString out_path = gSystem->ConcatFileName(out_dir, out_name);
 
-    TFile* output_file = TFile::Open(output_path, "RECREATE");
-    TTree* output_tree = selected_tree->CloneTree(0);
-    output_tree->SetDirectory(output_file);
+    TFile* out_file = TFile::Open(out_path, "RECREATE");
+    TTree* out_tree = selected_tree->CloneTree(0);
+    out_tree->SetDirectory(out_file);
     
     Int_t label = is_quark_jets ? 0 : 1;
     
-    output_tree->Branch("label", &label, "label/I");
+    out_tree->Branch("label", &label, "label/I");
     
-    for(int i=0; i < selected_entries; i++){
+    for(Int_t i=0; i < kSelectedEntries; i++){
         selected_tree->GetEntry(i);
 
         if(IsInfty(cmult)) continue;
@@ -100,63 +99,62 @@ TString AttachLabel(const TString& input_path, const TString& output_dir){
         if(IsInfty(axis1)) continue;
         if(IsInfty(axis2)) continue;
 
-        output_tree->Fill();
+        out_tree->Fill();
     }
     
-    output_file->Write();
-    output_file->Close();
+    out_file->Write();
+    out_file->Close();
 
     temp_file->Close();    
     TString rm_temp_cmd = TString::Format("rm %s", temp_path.Data());
     gSystem->Exec(rm_temp_cmd); 
 
-    input_file->Close();
+    in_file->Close();
 
 
-    std::cout << "Out: " << output_path << std::endl << std::endl;
+    std::cout << "Out: " << out_path << std::endl << std::endl;
     
-    return output_path;
+    return out_path;
 }
 
 
-TString Step1_AttachLabel(TString input_dir, TString parent_dir)
+TString Step1_AttachLabel(TString in_dir, TString parent_dir)
 {
-    TString output_dir = gSystem->ConcatFileName(parent_dir, "step1_labeling");
-    if(gSystem->AccessPathName(output_dir))
-        gSystem->mkdir(output_dir);
+    TString out_dir = gSystem->ConcatFileName(parent_dir, "step1_labeling");
+    if(gSystem->AccessPathName(out_dir))
+        gSystem->mkdir(out_dir);
 
-    std::vector< TString > paths = ListDir(input_dir, ".root");
-    for(auto input_path : paths){
-        AttachLabel(input_path, output_dir);
-    }
+    std::vector<TString> paths = ListDir(in_dir, ".root");
+    for(auto in_path : paths)
+        AttachLabel(in_path, out_dir);
 
-    return output_dir;
+    return out_dir;
 }
 
 
 // Step2
-TString Step2_Merge(TString input_dir){
+TString Step2_Merge(TString in_dir){
 
-    TString parent_dir = gSystem->DirName(input_dir);
-    TString output_dir = gSystem->ConcatFileName(parent_dir, "step2_first_merge");
-    if(gSystem->AccessPathName(output_dir))
-        gSystem->mkdir(output_dir);
+    TString parent_dir = gSystem->DirName(in_dir);
+    TString out_dir = gSystem->ConcatFileName(parent_dir, "step2_first_merge");
+    if(gSystem->AccessPathName(out_dir))
+        gSystem->mkdir(out_dir);
 
     std::vector< TString > qq, gg, zq, zg;
-    qq = ListDir(input_dir, ".root", "qq");
-    gg = ListDir(input_dir, ".root", "gg");
-    zq = ListDir(input_dir, ".root", "zq");
-    zg = ListDir(input_dir, ".root", "zg");
+    qq = ListDir(in_dir, ".root", "qq");
+    gg = ListDir(in_dir, ".root", "gg");
+    zq = ListDir(in_dir, ".root", "zq");
+    zg = ListDir(in_dir, ".root", "zg");
 
-    TString output_fmt = gSystem->ConcatFileName(output_dir, "%s_%d.root");
+    TString out_fmt = gSystem->ConcatFileName(out_dir, "%s_%d.root");
 
     // Dijet
     for(auto i=0; i<qq.size(); i++){
         TChain mychain("jetAnalyser");
         mychain.Add(qq[i]);
         mychain.Add(gg[i]);
-        TString output_path = TString::Format(output_fmt, "dijet", i); 
-        mychain.Merge(output_path);
+        TString out_path = TString::Format(out_fmt, "dijet", i); 
+        mychain.Merge(out_path);
     }
 
     // Z+jet
@@ -164,165 +162,163 @@ TString Step2_Merge(TString input_dir){
         TChain mychain("jetAnalyser");
         mychain.Add(zq[i]);
         mychain.Add(zg[i]);
-        TString output_path = TString::Format(output_fmt, "zjet", i); 
-        mychain.Merge(output_path);
+        TString out_path = TString::Format(out_fmt, "zjet", i); 
+        mychain.Merge(out_path);
     }
 
-    return output_dir;
+    return out_dir;
 }
 
 
 /////////////////////////////////
 //      STEP3
 ////////////////////////////////
-TString ShuffleTree(const TString& input_path,
-                    const TString& output_dir,
-                    const TString& input_numcycle="jetAnalyser")
+TString ShuffleTree(const TString& in_path,
+                    const TString& out_dir,
+                    const TString& in_numcycle="jetAnalyser")
 {
 
-    TFile* input_file = new TFile(input_path, "READ");
-    TTree* input_tree = (TTree*) input_file->Get(input_numcycle);
-    const Int_t kInputEntries = input_tree->GetEntries();
+    TFile* in_file = new TFile(in_path, "READ");
+    TTree* in_tree = (TTree*) in_file->Get(in_numcycle);
+    const Int_t kInEntries = in_tree->GetEntries();
 
-    TString output_filename = gSystem->BaseName(input_path);
-    TString output_path = gSystem->ConcatFileName(output_dir, output_filename);
+    TString out_filename = gSystem->BaseName(in_path);
+    TString out_path = gSystem->ConcatFileName(out_dir, out_filename);
 
-    TFile* output_file = new TFile(output_path, "RECREATE");
-    TTree* output_tree = input_tree->CloneTree(0);
-    output_tree->SetDirectory(output_file);
+    TFile* out_file = new TFile(out_path, "RECREATE");
+    TTree* out_tree = in_tree->CloneTree(0);
+    out_tree->SetDirectory(out_file);
 
-    int order[kInputEntries];
-    for(unsigned int i=0; i<kInputEntries; i++)
-        order[i] = i;
-
-    std::random_shuffle(order, order+kInputEntries );
+    Int_t order[kInEntries];
+    std::iota(order, order + kInEntries, 0);
+    std::random_shuffle(order, order + kInEntries);
 
 
-    const int kPrintFreq = static_cast<int>( kInputEntries / 10.0 );
+    const Int_t kPrInt_tFreq = static_cast<Int_t>( kInEntries / 10.0 );
 
-    for(unsigned int i=0; i < kInputEntries; i++){
-        input_tree->GetEntry(order[i]);
+    for(int i=0; i < kInEntries; i++){
+        in_tree->GetEntry(order[i]);
 
-        if((i % kPrintFreq == 0) or ( (i+1) == kInputEntries )){
-            std::cout << "(" << 10 * i / kPrintFreq << "%) "
+        if((i % kPrInt_tFreq == 0) or ( (i+1) == kInEntries )){
+            std::cout << "(" << 10 * i / kPrInt_tFreq << "%) "
                  << i << "the entires" << std::endl;
         }
 
-        output_tree->Fill();
+        out_tree->Fill();
     }
 
-    output_file->Write();
-    output_file->Close();
+    out_file->Write();
+    out_file->Close();
 
-    input_file->Close();
+    in_file->Close();
 
-    return output_path;
+    return out_path;
 }
 
 
-TString Step3_Shuffle(TString input_dir)
+TString Step3_Shuffle(TString in_dir)
 {
 
-    TString parent_dir = gSystem->DirName(input_dir);
-    TString output_dir = gSystem->ConcatFileName(parent_dir, "step3_shuffle");
-    if(gSystem->AccessPathName(output_dir))
-        gSystem->mkdir(output_dir);
+    TString parent_dir = gSystem->DirName(in_dir);
+    TString out_dir = gSystem->ConcatFileName(parent_dir, "step3_shuffle");
+    if(gSystem->AccessPathName(out_dir))
+        gSystem->mkdir(out_dir);
 
-    std::vector< TString > dijet_files = ListDir(input_dir, ".root", "dijet");
-    std::vector< TString > zjet_files = ListDir(input_dir, ".root", "zjet");
+    std::vector< TString > dijet_files = ListDir(in_dir, ".root", "dijet");
+    std::vector< TString > zjet_files = ListDir(in_dir, ".root", "zjet");
 
-    TString output_path;
+    TString out_path;
 
     for(auto dj : dijet_files)
-        output_path = ShuffleTree(dj, output_dir);
-        std::cout << output_path << std::endl << std::endl;
+        out_path = ShuffleTree(dj, out_dir);
+        std::cout << out_path << std::endl << std::endl;
 
     for(auto zj : zjet_files)
-        output_path = ShuffleTree(zj, output_dir);
-        std::cout << output_path << std::endl << std::endl;
+        out_path = ShuffleTree(zj, out_dir);
+        std::cout << out_path << std::endl << std::endl;
 
-    return output_dir;
+    return out_dir;
 }
 
 //
 //  STEP4 Merge
 //
-TString Step4_Merge(TString input_dir){
+TString Step4_Merge(TString in_dir){
 
-    TString parent_dir = gSystem->DirName(input_dir);
-    TString output_dir = gSystem->ConcatFileName(parent_dir, "step4_second_merge");
-    if(gSystem->AccessPathName(output_dir))
-        gSystem->mkdir(output_dir);
+    TString parent_dir = gSystem->DirName(in_dir);
+    TString out_dir = gSystem->ConcatFileName(parent_dir, "step4_second_merge");
+    if(gSystem->AccessPathName(out_dir))
+        gSystem->mkdir(out_dir);
 
     std::vector< TString > dijet_paths, zjet_paths;
-    dijet_paths = ListDir(input_dir, ".root", "dijet");
-    zjet_paths = ListDir(input_dir, ".root", "zjet");
+    dijet_paths = ListDir(in_dir, ".root", "dijet");
+    zjet_paths = ListDir(in_dir, ".root", "zjet");
 
     // Dijet
     TChain dijet_chain("jetAnalyser");
-    TString dijet_chain_path = gSystem->ConcatFileName(output_dir, "dijet.root");
+    TString dijet_chain_path = gSystem->ConcatFileName(out_dir, "dijet.root");
     for(auto dj : dijet_paths)
         dijet_chain.Add(dj);
     dijet_chain.Merge(dijet_chain_path);
 
     // Z+jet
     TChain zjet_chain("jetAnalyser");
-    TString zjet_chain_path = gSystem->ConcatFileName(output_dir, "zjet.root");
+    TString zjet_chain_path = gSystem->ConcatFileName(out_dir, "zjet.root");
     for(auto zj : zjet_paths)
         zjet_chain.Add(zj);
     zjet_chain.Merge(zjet_chain_path);
 
-    return output_dir;
+    return out_dir;
 }
 
 
-TString BalanceClasses(const TString& input_path, const TString& output_dir)
+TString BalanceClasses(const TString& in_path, const TString& out_dir)
 {
-    // Input Dijet
-    std::cout << "In: " << input_path << std::endl;
-    TFile* input_file = TFile::Open(input_path, "READ");
-    TTree* input_tree = dynamic_cast<TTree*>( input_file->Get("jetAnalyser") );
-    const int kInputEntries = input_tree->GetEntries();
+    // In Dijet
+    std::cout << "In: " << in_path << std::endl;
+    TFile* in_file = TFile::Open(in_path, "READ");
+    TTree* in_tree = dynamic_cast<TTree*>( in_file->Get("jetAnalyser") );
+    const Int_t kInEntries = in_tree->GetEntries();
 
     Int_t label;
-    input_tree->SetBranchAddress("label", &label);
+    in_tree->SetBranchAddress("label", &label);
 
-    const int kNumQuark = input_tree->Draw("pt >> tmp_hist_quark", "label == 0", "goff"); 
-    const int kNumGluon = input_tree->Draw("pt >> tmp_hist_gluon", "label == 1", "goff"); 
+    const Int_t kNumQuark = in_tree->Draw("pt >> tmp_hist_quark", "label == 0", "goff"); 
+    const Int_t kNumGluon = in_tree->Draw("pt >> tmp_hist_gluon", "label == 1", "goff"); 
 
     gDirectory->Delete("tmp_hist_quark");
     gDirectory->Delete("tmp_hist_gluon");
 
-    std::cout << "For the input," << std::endl;
+    std::cout << "For the in," << std::endl;
     std::cout << "# of quark jets: " << kNumQuark << std::endl;
     std::cout << "# of gluon jets: " << kNumGluon << std::endl;
 
 
     // Output Dijet
-    TString output_name = gSystem->BaseName(input_path);
-    TString output_path = gSystem->ConcatFileName(output_dir, output_name);
+    TString out_name = gSystem->BaseName(in_path);
+    TString out_path = gSystem->ConcatFileName(out_dir, out_name);
 
     if ( kNumQuark == kNumGluon ) {
-        TString mv_cmd = TString::Format("mv %s %s", input_path.Data(), output_dir.Data());
+        TString mv_cmd = TString::Format("mv %s %s", in_path.Data(), out_dir.Data());
         gSystem->Exec(mv_cmd);
     }
     else {
-        const int kMoreClass = kNumQuark > kNumGluon ? 0 : 1;
-        const int kLessNum = kNumQuark > kNumGluon ? kNumGluon : kNumQuark;
+        const Int_t kMoreClass = kNumQuark > kNumGluon ? 0 : 1;
+        const Int_t kLessNum = kNumQuark > kNumGluon ? kNumGluon : kNumQuark;
         std::cout << "a Class with More examples: " << kMoreClass << std::endl;
         std::cout << "a Number of Less: " << kLessNum << std::endl;
 
-        TFile* output_file = TFile::Open(output_path, "RECREATE");
-        TTree* output_tree = input_tree->CloneTree(0);
-        output_tree->SetDirectory(output_file);
+        TFile* out_file = TFile::Open(out_path, "RECREATE");
+        TTree* out_tree = in_tree->CloneTree(0);
+        out_tree->SetDirectory(out_file);
 
-        int count = 0;
-        const int kPrintFreq = kInputEntries / 10;
-        for(int i=0; i < kInputEntries; i++) {
-            input_tree->GetEntry(i);
+        Int_t count = 0;
+        const Int_t kPrInt_tFreq = kInEntries / 10;
+        for(Int_t i=0; i < kInEntries; i++) {
+            in_tree->GetEntry(i);
 
-            if( i % kPrintFreq == 0 ) {
-                std::cout << "(" << 10 * i / kPrintFreq << "%) "
+            if( i % kPrInt_tFreq == 0 ) {
+                std::cout << "(" << 10 * i / kPrInt_tFreq << "%) "
                           << i << "th entries" << std::endl;
             }
 
@@ -330,7 +326,7 @@ TString BalanceClasses(const TString& input_path, const TString& output_dir)
             {
                 if ( count < kLessNum )
                 {
-                    output_tree->Fill();
+                    out_tree->Fill();
                     count++;
                 }
                 else
@@ -338,55 +334,55 @@ TString BalanceClasses(const TString& input_path, const TString& output_dir)
             }
             else
             {
-                output_tree->Fill();
+                out_tree->Fill();
             }
         }
 
-        const int kNumOutQuark = output_tree->Draw("pt >> tmp_hist_quark", "label == 0", "goff"); 
-        const int kNumOutGluon = output_tree->Draw("pt >> tmp_hist_gluon", "label == 1", "goff"); 
+        const Int_t kNumOutQuark = out_tree->Draw("pt >> tmp_hist_quark", "label == 0", "goff"); 
+        const Int_t kNumOutGluon = out_tree->Draw("pt >> tmp_hist_gluon", "label == 1", "goff"); 
 
         gDirectory->Delete("tmp_hist_quark");
         gDirectory->Delete("tmp_hist_gluon");
 
         std::cout << std::endl;
-        std::cout << "For the output" << std::endl;
+        std::cout << "For the out" << std::endl;
         std::cout << "# of quark jets: " << kNumOutQuark << std::endl;
         std::cout << "# of gluon jets: " << kNumOutGluon << std::endl;
 
 
-        output_file->Write();
-        output_file->Close();
+        out_file->Write();
+        out_file->Close();
     }
 
-    std::cout << "Out: " << output_path << std::endl;
-    return output_path;
+    std::cout << "Out: " << out_path << std::endl;
+    return out_path;
 }
 
 
 
-TString Step5_BalanceClasses(const TString& input_dir)
+TString Step5_BalanceClasses(const TString& in_dir)
 {
-    TString output_dir = gSystem->DirName(input_dir);
+    TString out_dir = gSystem->DirName(in_dir);
 
-    TString dijet_path = gSystem->ConcatFileName(input_dir, "dijet.root");
-    TString zjet_path = gSystem->ConcatFileName(input_dir, "zjet.root");
+    TString dijet_path = gSystem->ConcatFileName(in_dir, "dijet.root");
+    TString zjet_path = gSystem->ConcatFileName(in_dir, "zjet.root");
 
-    BalanceClasses(dijet_path, output_dir);
-    BalanceClasses(zjet_path, output_dir);
-    return output_dir; 
+    BalanceClasses(dijet_path, out_dir);
+    BalanceClasses(zjet_path, out_dir);
+    return out_dir; 
 
 }
 
 
-void macro(const TString& input_dir){
+void macro(const TString& in_dir){
  
-    TString parent_dir = gSystem->DirName(input_dir);
-    TString merged_dir = gSystem->ConcatFileName(parent_dir, "2-Merged");
+    TString parent_dir = gSystem->DirName(in_dir);
+    TString merged_dir = gSystem->ConcatFileName(parent_dir, "2-Refined");
     if(gSystem->AccessPathName(merged_dir))
         gSystem->mkdir(merged_dir);
    
     std::cout << "Step 1: Select good jets and attach label" << std::endl << std::endl;
-    TString step1_path = Step1_AttachLabel(input_dir, merged_dir);
+    TString step1_path = Step1_AttachLabel(in_dir, merged_dir);
 
     std::cout << "Step 1: Merge one quark jet and gluon jet file." << std::endl << std::endl;
     TString step2_path = Step2_Merge(step1_path);
@@ -396,15 +392,12 @@ void macro(const TString& input_dir){
 
     std::cout << "Step 4: Merge the entire dataset." << std::endl << std::endl;
     TString step4_path = Step4_Merge(step3_path);
-
-    std::cout << "Step 4: Balance classes in a dataset" << std::endl << std::endl;
-    TString step5_path = Step5_BalanceClasses(step4_path);
 }
 
 
-int main(int argc, char *argv[])
+Int_t main(Int_t argc, char *argv[])
 {
-    TString input_dir = argv[1];
-    macro(input_dir);
+    TString in_dir = argv[1];
+    macro(in_dir);
     return 0;
 }
