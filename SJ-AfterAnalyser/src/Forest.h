@@ -13,11 +13,10 @@
 class Forest {
 public:
   Forest(std::vector<TString> paths, TString tree_name);
-  ~Forest();
 
   TTree* CloneTree();
   void CopyAddress(TTree* tree);
-  Int_t GetEntry();
+  void GetEntry();
   Int_t GetEntries();
   Bool_t HasEntry();
   void Close();

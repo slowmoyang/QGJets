@@ -30,28 +30,23 @@ Forest::Forest(std::vector<TString> paths, TString tree_name) {
 
   tree_candidates_.assign(trees_.begin(), trees_.end());
   num_candidates_ = tree_candidates_.size();
+
   entry_candidates_.resize(num_candidates_);
   std::fill(entry_candidates_.begin(), entry_candidates_.end(), 0);
 }
 
 
-Forest::~Forest() {}
-
-
-Int_t Forest::GetEntry() {
+void Forest::GetEntry() {
   Int_t tree_idx = gRandom->Uniform(num_candidates_);
 
-  Int_t get_entry_out = tree_candidates_[tree_idx]->GetEntry(entry_candidates_[tree_idx]); 
+  tree_candidates_[tree_idx]->GetEntry(entry_candidates_[tree_idx]); 
   entry_candidates_[tree_idx]++;
 
   if(entry_candidates_[tree_idx] == num_entries_[tree_idx]) {
     tree_candidates_.erase(tree_candidates_.begin() + tree_idx);
     entry_candidates_.erase(entry_candidates_.begin() + tree_idx);
-
     num_candidates_ = tree_candidates_.size(); 
   }
-
-  return 0;
 }
 
 
