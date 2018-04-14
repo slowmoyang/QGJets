@@ -7,6 +7,7 @@
 #include "TSystem.h"
 
 #include <vector>
+#include <cstdlib>
 
 
 std::vector<TString> SplitTree(const TString& in_path,
@@ -14,11 +15,19 @@ std::vector<TString> SplitTree(const TString& in_path,
                                Int_t num_unit_entries=500,
                                const TString& tree_name="jetAnalyser") {
 
+  std::cout << "[SplitTree] Input: " << in_path << std::endl;
+
   TFile* in_file = TFile::Open(in_path, "READ");
   TTree* in_tree = dynamic_cast<TTree*>(in_file->Get(tree_name));
   const Int_t kInEntries = in_tree->GetEntries();
 
+  if( kInEntries == 0 ) { 
+    std::cout << "[SplitTree] An input file has no entry" << std::endl;
+    std::abort();
+  }
+
   Int_t num_fragments = std::ceil(kInEntries / float(num_unit_entries));
+  std::cout << "[SplitTree] # of fragments = " << num_fragments << std::endl;
 
   TString out_name = gSystem->BaseName(in_path);
   out_name.Insert(out_name.Last('.'), "_%06d");
@@ -57,12 +66,16 @@ std::vector<TString> SplitTree(const TString& in_path,
     each->Close();
   }
 
+  std::cout << "[Split] Finish off splitting a tree" << std::endl;
   return out_paths;
 }
 
 
 int main(int argc, char** argv) {
-  TString in_path(argv[1]);
+  TString in_path = argv[1];
+  std::cout << "Input: " << in_path << std::endl;
+
+
   const TString kTreeName = "jetAnalyser";
 
   TString in_dir = gSystem->DirName(in_path);
@@ -104,7 +117,17 @@ int main(int argc, char** argv) {
   out_file->Write();
   out_file->Close();
 
-  std::cout << "Forest: " << myforest->GetEntries() << std::endl;
 
+  /////////////////////////////////////////////////
+  // Remove tmporary files and their directory.
+  //////////////////////////////////////////////////
+  for(auto tmp : split_result) {
+    TString rm_cmd = TString::Format("rm -v %s", tmp.Data());
+    gSystem->Exec(rm_cmd);
+  }
+  TString rmdir_cmd = TString::Format("rmdir -v %s", tmp_dir.Data());
+  gSystem->Exec(rmdir_cmd);
+
+  std::cout << "Finish off shuffling." << std::endl;
   return 0;
 }
