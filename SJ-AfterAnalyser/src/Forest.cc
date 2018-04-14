@@ -70,8 +70,8 @@ void Forest::CopyAddress(TTree* tree) {
 
 Bool_t Forest::HasEntry() {
   Bool_t has_entry;
-  if (num_alive_ > 0)       has_entry = true;
-  else if (num_alive_ == 0) has_entry = false;
+  if (alives_.size() > 0)       has_entry = true;
+  else if (alives_.size() == 0) has_entry = false;
   else                      std::abort();
   return has_entry;
 }
