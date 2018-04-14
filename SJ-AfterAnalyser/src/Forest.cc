@@ -19,6 +19,8 @@
 Forest::Forest(std::vector<TString> paths, TString tree_name) {
   tree_name_ = tree_name;
 
+  num_total_ = paths.size();
+
   Int_t idx = 0;
   num_total_entries_ = 0;
   for(auto path : paths) {
@@ -40,6 +42,7 @@ Forest::Forest(std::vector<TString> paths, TString tree_name) {
 
     idx++;
   }
+  num_alives_ = alives_.size();
 }
 
 
@@ -52,8 +55,10 @@ void Forest::GetEntry() {
   candidates_[idx].entry++;
 
   if(candidates_[idx].entry == candidates_[idx].num_entries) {
-    std::cout << candidates_[idx].path << "'s tree is exhausted" << std::endl;
     alives_.erase(alives_.begin() + alives_idx);
+    num_alives_ = alives_.size();
+    std::cout << candidates_[idx].path << "'s tree is exhausted" << std::endl;
+    std::cout << TString::Format("Total: %d | Remaining: %d\n", num_total_, alives_.size()) << std::endl;
   }
 }
 
@@ -70,8 +75,8 @@ void Forest::CopyAddress(TTree* tree) {
 
 Bool_t Forest::HasEntry() {
   Bool_t has_entry;
-  if (num_alive_ > 0)       has_entry = true;
-  else if (num_alive_ == 0) has_entry = false;
+  if (num_alives_ > 0)       has_entry = true;
+  else if (num_alives_ == 0) has_entry = false;
   else                      std::abort();
   return has_entry;
 }
