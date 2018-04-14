@@ -53,7 +53,10 @@ SplitDataset(TString const& in_path,
     const Int_t kPrintFreq = static_cast<Int_t>( kInEntries / 10 );
     Double_t split_prob;
     Timer timer(true);
-    for(Int_t i=0; i < kInEntries; i++){
+    Int_t kTrainSetEnd = static_cast<Int_t>(0.6 * kInEntries);
+    Int_t kValSetEnd = static_cast<Int_t>(0.8 * kInEntries);
+
+    for(Int_t i = 0; i < kInEntries; i++){
         in_tree->GetEntry(i);
 
         if( i % kPrintFreq == 0 ) {
@@ -62,16 +65,9 @@ SplitDataset(TString const& in_path,
             timer.Print();
         }
 
-        split_prob = gRandom->Uniform(0, 1);
-        if ( split_prob < 0.6) {
-            train_tree->Fill();
-        }
-        else if ( split_prob < 0.8 ) {
-            val_tree->Fill();
-        }
-        else {
-            test_tree->Fill();
-        }
+        if (i < kTrainSetEnd)    train_tree->Fill();
+        else if (i < kValSetEnd) val_tree->Fill();
+        else                     test_tree->Fill();
     }
     timer.Print();
 

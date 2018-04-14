@@ -160,13 +160,14 @@ TString PrepTestSet(TString const& in_path,
 
         // Create the map of image mean
         std::map<TString, Float_t*> mean_map;
-        scale_file->cd("image_mean");
+        TString scale_dir = "/image_mean/";
         for(auto each : image_names)
         {
-            TVectorF tmp_tvec = *(static_cast<TVectorF*>(scale_file->Get(each)));
+            std::cout << each << std::endl;
+
+            TVectorF tmp_tvec = *(static_cast<TVectorF*>(scale_file->Get(scale_dir+each)));
             mean_map[each] = ConvertTVec2CArr(tmp_tvec);
         }
-        scale_file->cd();
 
         // Subtract mu from each images
         local_timer.Reset();
@@ -200,15 +201,15 @@ TString PrepTestSet(TString const& in_path,
     {
         Timer stddev_timer(true);
 
-        std::cout << std::endl << std::endl << GetNow;
+        std::cout << std::endl << std::endl << GetNow();
         std::cout << " [Standardization] Start the standardization." << std::endl;
 
         // Create the map of stddev
         std::map<TString, Float_t*> stddev_map;
-        scale_file->cd("image_stddev");
+        TString scale_dir = "/image_stddev/";
         for(auto each : image_names)
         {
-            TVectorF tmp_tvec = *(static_cast<TVectorF*>(scale_file->Get(each)));
+            TVectorF tmp_tvec = *(static_cast<TVectorF*>(scale_file->Get(scale_dir+each)));
             stddev_map[each] = ConvertTVec2CArr(tmp_tvec);
         }
         scale_file->cd();
@@ -248,7 +249,6 @@ TString PrepTestSet(TString const& in_path,
     std::cout << "Elapsed time is " << local_timer.GetElapsedTime() << std::endl; 
 
     out_file->Write();
-    out_file->Print();
     out_file->Close();
 
     if(scale_file != nullptr)

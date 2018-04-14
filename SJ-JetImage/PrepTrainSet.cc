@@ -310,7 +310,6 @@ TString PrepTrainSet(TString const& in_path,
     std::cout << "Elapsed time is " << local_timer.GetElapsedTime() << std::endl; 
 
     out_file->Write();
-    out_file->Print();
     out_file->Close();
 
     in_file->Close();

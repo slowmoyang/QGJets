@@ -217,7 +217,6 @@ TString MakeJetImage(TString const& in_path,
     std::cout << "Elapsed time is " << timer.GetElapsedTime() << std::endl;
     
     out_file->Write();
-    out_file->Print();
     out_file->Close();
     in_file->Close();
 
