@@ -33,26 +33,33 @@ def stringize(value):
 
 def main():
     parser = argparse.ArgumentParser()
+
+    parser.add_argument("--batch_name", "-b", default="SplitAndShuffle", type=str)
+
+    default_jobs_dir = os.path.abspath(os.path.join(os.path.curdir, "jobs"))
+    parser.add_argument("--jobs_dir", default=default_jobs_dir, type=str)
+
     parser.add_argument("--arguments", "-a", nargs="+", required=True)
-    parser.add_argument("--proj_dir", default=os.path.abspath(os.path.curdir), type=str)
+
     args = parser.parse_args()
 
     ##########################################
     # variables
     ###########################################
-    executable = os.path.join(args.proj_dir, "run.sh")
+    curdir = os.path.abspath(os.path.curdir)
+    executable = os.path.join(curdir, "run.sh")
 
     transfer_input_files = ["run.sh", "split_and_shuffle"]
-    transfer_input_files = [os.path.join(args.proj_dir, each) for each in transfer_input_files]
+    transfer_input_files = [os.path.join(curdir, each) for each in transfer_input_files]
 
     ###################################
     # Make a job submission directory.
     ##################################
     submit_dir_name = "job_{name}_{date}".format(
-        name="SS",
-        date=datetime.now().strftime("%y-%m-%d-%H-%M-%S"))
+        name=args.batch_name,
+        date=datetime.now().strftime("%y-%m-%d-%H-%M-%s"))
 
-    submit_dir = os.path.join(args.proj_dir, submit_dir_name)
+    submit_dir = os.path.join(args.jobs_dir, submit_dir_name)
 
     if os.path.exists(submit_dir):
         raise IOError("{} already exsits".format(submit_dir))
@@ -78,7 +85,9 @@ def main():
     ######################################3
     # Execute condor_submit
     ####################################
-    submit_cmd = "condor_submit {}".format(jds_path)
+    submit_cmd = "condor_submit -batch-name {batch_name} {jds_path}".format(
+        batch_name=args.batch_name,
+        jds_path=jds_path)
     print(submit_cmd)
     os.system(submit_cmd)
 
