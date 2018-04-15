@@ -78,7 +78,8 @@ class DataLoaderBase(object):
                 slicing = slice(self._start, end)
                 if end <= len(self):
                     self._start = end
-                    return self[slicing]
+                    batch = self[slicing]
+                    return batch
                 else:
                     batch = self[slicing]
                     
@@ -92,16 +93,18 @@ class DataLoaderBase(object):
                     return batch
             else:
                 self._start = 0
-                return self.next()
+                batch = self.next()
+                return batch
         else:
             if self._start + 1 < len(self):
                 end = self._start + self.batch_size
                 slicing = slice(self._start, end)
                 self._start = end
-                return self[slicing]
+                batch = self[slicing]
+                return batch
             else:
                 raise StopIteration
-                
+
     def __next__(self):
         return self.next()
 
