@@ -18,7 +18,7 @@ import tensorflow as tf
 
 sys.path.append("..")
 from keras4jet.models import get_custom_objects
-from keras4jet.data_loader import ImageDataLoader
+from keras4jet.data_loader import ImageSetLoader
 from keras4jet.meters import OutHist
 from keras4jet.meters import ROCMeter
 from keras4jet.heatmap import Heatmap
@@ -49,7 +49,7 @@ def evaluate(saved_model_path,
     ##########################
     # training data
     ###########################
-    train_loader = ImageDataLoader(
+    train_loader = ImageSetLoader(
         path=config.training_set,
         x=config.x,
         x_shape=config.x_shape,
@@ -64,7 +64,7 @@ def evaluate(saved_model_path,
     #############################
     # Test on dijet dataset
     ########################
-    dijet_loader = ImageDataLoader(
+    dijet_loader = ImageSetLoader(
         path=config.dijet_test_set,
         x=config.x,
         x_shape=config.x_shape,
@@ -101,7 +101,7 @@ def evaluate(saved_model_path,
     ##################################
     # Test on Z+jet dataset
     ###################################
-    test_zjet_loader = ImageDataLoader(
+    test_zjet_loader = ImageSetLoader(
         path=config.zjet_test_set,
         x=config.x,
         x_shape=config.x_shape,

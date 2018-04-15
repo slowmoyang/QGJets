@@ -6,7 +6,7 @@ from six.moves import xrange
 
 import sys
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import matplotlib as mpl
 mpl.use("Agg")
@@ -24,7 +24,7 @@ from keras.utils import multi_gpu_model
 
 sys.path.append("..")
 from keras4jet.models import build_a_model
-from keras4jet.data_loader import ImageDataLoader
+from keras4jet.data_loader import ImageSetLoader
 from keras4jet.meters import Meter
 from keras4jet import train_utils
 from keras4jet.utils import get_log_dir
@@ -37,7 +37,7 @@ def train():
 
     parser.add_argument("--train_sample", default="dijet", type=str)
     parser.add_argument("--datasets_dir",
-                        default="../../Data/root_100_500/3-JetImage",
+                        default="../../Data/root_100_500/3-JetImage/Shuffled",
                         type=str)
     parser.add_argument("--model", default="large_filter", type=str)
 
@@ -90,7 +90,7 @@ def train():
 
     config["x_shape"] = (len(config.x), 33, 33)
 
-    train_loader = ImageDataLoader(
+    train_loader = ImageSetLoader(
         path=config.training_set,
         x=config.x,
         x_shape=config.x_shape,
@@ -100,14 +100,14 @@ def train():
     steps_per_epoch = int(len(train_loader) / train_loader.batch_size)
     total_step = config.num_epochs * steps_per_epoch
 
-    val_dijet_loader = ImageDataLoader(
+    val_dijet_loader = ImageSetLoader(
         path=config.dijet_validation_set,
         x=config.x,
         x_shape=config.x_shape,
         batch_size=config.val_batch_size,
         cyclic=True)
 
-    val_zjet_loader = ImageDataLoader(
+    val_zjet_loader = ImageSetLoader(
         path=config.zjet_validation_set,
         x=config.x,
         x_shape=config.x_shape,
