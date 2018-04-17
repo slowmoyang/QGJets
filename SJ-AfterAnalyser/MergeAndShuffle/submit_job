@@ -23,6 +23,7 @@ queue
 """
 
 def stringize(value, delimiter=" "):
+    assert delimiter in [" ", ","]
     if isinstance(value, collections.Iterable):
         string = "".join([str(each) + delimiter for each in value])
         string = string.strip(delimiter)
@@ -34,7 +35,7 @@ def stringize(value, delimiter=" "):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--batch_name", "-b", default="SplitAndShuffle", type=str)
+    parser.add_argument("--batch_name", "-b", default="MergeAndShuffle", type=str)
 
     default_jobs_dir = os.path.abspath(os.path.join(os.path.curdir, "jobs"))
     parser.add_argument("--jobs_dir", default=default_jobs_dir, type=str)
@@ -49,7 +50,7 @@ def main():
     curdir = os.path.abspath(os.path.curdir)
     executable = os.path.join(curdir, "run.sh")
 
-    transfer_input_files = ["run.sh", "split_and_shuffle"]
+    transfer_input_files = ["run.sh", "merge_and_shuffle"]
     transfer_input_files = [os.path.join(curdir, each) for each in transfer_input_files]
 
     ###################################
@@ -70,6 +71,7 @@ def main():
     # Write a jds file.
     ###################################
     arguments = stringize(args.arguments, delimiter=" ")
+
     transfer_input_files = stringize(transfer_input_files, delimiter=",")
 
     submit = submit_template.format(

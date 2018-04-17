@@ -1,0 +1,15 @@
+ #
+executable = /cms/ldap_home/slowmoyang/CMSSW_8_1_0/src/QGJets/SJ-AfterAnalyser/MergeAndShuffle/run.sh
+universe = vanilla
+log = /cms/ldap_home/slowmoyang/CMSSW_8_1_0/src/QGJets/SJ-AfterAnalyser/MergeAndShuffle/jobs/job_MS_DJ_VALIDATION_18-04-16-09-29-1523838596/condor.log
+getenv = True
+
+arguments = dijet validation
+
+should_transfer_files = YES
+transfer_input_files = /cms/ldap_home/slowmoyang/CMSSW_8_1_0/src/QGJets/SJ-AfterAnalyser/MergeAndShuffle/run.sh,/cms/ldap_home/slowmoyang/CMSSW_8_1_0/src/QGJets/SJ-AfterAnalyser/MergeAndShuffle/merge_and_shuffle
+
+when_to_transfer_output = ON_EXIT
+output = /cms/ldap_home/slowmoyang/CMSSW_8_1_0/src/QGJets/SJ-AfterAnalyser/MergeAndShuffle/jobs/job_MS_DJ_VALIDATION_18-04-16-09-29-1523838596/job_$(Process).log
+error = /cms/ldap_home/slowmoyang/CMSSW_8_1_0/src/QGJets/SJ-AfterAnalyser/MergeAndShuffle/jobs/job_MS_DJ_VALIDATION_18-04-16-09-29-1523838596/job_$(Process).err
+queue
