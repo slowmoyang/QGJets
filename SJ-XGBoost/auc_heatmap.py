@@ -41,7 +41,7 @@ def main(log_dir, dataset_dir, out_dir):
 
     model_path_list = [os.path.join(log_dir, each, "xgb.model") for each in models]
 
-    dataset_fmt = "./Data/old_dset/pt_{}_{}/dijet_test_set.npz"
+    dataset_fmt = "/data/slowmoyang/QGJets/npz/root_{}_{}/dijet_test_set.npz"
     datasets = [dataset_fmt.format(min_pt, min_pt+100) for min_pt in range(100, 901, 100)]
 
     auc_matrix = [[] for min_pt in range(100, 1000, 100)]
@@ -52,7 +52,7 @@ def main(log_dir, dataset_dir, out_dir):
         model_min_pt, _ = parse_model_path(model_path)
         for dataset_path in datasets:
             _, dataset_min_pt, _ = parse_dataset_path(dataset_path)
-            x, y_true = load_dataset(dataset_path, x=config.feature_names)
+            x, y_true, _ = load_dataset(dataset_path, features=config.feature_names)
 
             y_score = clf.predict_proba(x)[:, 1]
             auc = metrics.roc_auc_score(y_true=y_true, y_score=y_score)

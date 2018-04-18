@@ -11,6 +11,7 @@ import copy
 from collections import OrderedDict
 import argparse
 import time
+import json
 
 import xgboost as xgb
 
@@ -116,9 +117,9 @@ def main():
     config["validation_path"] = valid_path
     config["test_path"] = test_path
 
-    train_set, train_extra = load_dataset(train_path, x=config.feature_names, extra=config.extra) 
-    valid_set, valid_extra = load_dataset(valid_path, x=config.feature_names, extra=config.extra) 
-    test_set, test_extra = load_dataset(test_path, x=config.feature_names, extra=config.extra) 
+    train_set, train_extra = load_dataset(train_path, features=config.feature_names, extra=config.extra) 
+    valid_set, valid_extra = load_dataset(valid_path, features=config.feature_names, extra=config.extra) 
+    test_set, test_extra = load_dataset(test_path, features=config.feature_names, extra=config.extra) 
 
     config["num_train_set"] = train_set[0].shape[0]
     config["num_valid_set"] = valid_set[0].shape[0]
@@ -183,7 +184,7 @@ def main():
     ###########################
     #   Evaluation
     ##########################
-    x, y_true = test_set
+    x, y_true, _ = test_set
     y_score = clf.predict_proba(x)[:, 1]
     y_pred = clf.predict(x)
 
@@ -318,15 +319,26 @@ def main():
 
     out_file.Close()
 
+    ###########################################
     # Feature Importance
+    ##########################################
     imp_path_fmt = os.path.join(log_dir.path, "feature_importance.{ext}")
 
     importance = clf.get_booster().get_fscore()
     normalizer = sum(importance.values())
 
-    importance = {name: float(importance.get('f{:d}'.format(idx))) / normalizer for idx, name in enumerate(config.feature_names)}
+    feature_names = train_set[2]
+
+    name_and_score = []
+    for name, score in importance.iteritems():
+        idx = int(name.lstrip("f"))
+        name_and_score.append((feature_names[idx], score))
+
+    importance = {name: score / normalizer for name, score in name_and_score}
 
     importance = OrderedDict(sorted(importance.iteritems(), key=lambda item: item[1]))
+
+
 
     fig, ax = plt.subplots()
     fig.set_figheight(8)
@@ -342,6 +354,14 @@ def main():
 
     fig.savefig(imp_path_fmt.format(ext="png"))
     fig.savefig(imp_path_fmt.format(ext="pdf"), format="pdf")
+
+    unused_features = list(set(feature_names).difference(importance.keys()))
+    importance.update({key: 0.0 for key in unused_features})
+
+    with open(imp_path_fmt.format(ext="json"), "w") as json_file:
+        dumped = json.dumps(importance)
+        json_file.write(dumped)
+
 
 
     #################
