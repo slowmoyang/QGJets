@@ -57,6 +57,7 @@ def main():
     parser.add_argument("--log_dname", default="XGB", type=str)
 
     # General Parameters
+    parser.add_argument("--gpu", default=False, type=bool)
     parser.add_argument("--booster", default="gbtree", type=str)
     parser.add_argument("--silent", default=False, type=bool)
 
@@ -148,9 +149,10 @@ def main():
         params["one_drop"] = args.one_drop
         params["skip_drop"] = args.skip_drop
     # Parameters for GPU 
-    params['gpu_id'] = 0 
-    params['max_bin'] = 16
-    params['tree_method'] = 'gpu_hist'
+    if args.gpu:
+        params['gpu_id'] = 0 
+        params['max_bin'] = 16
+        params['tree_method'] = 'gpu_hist'
     # params["n_gpu"] = -1
     # params["predictor"] = "gpu_predictor"
 
