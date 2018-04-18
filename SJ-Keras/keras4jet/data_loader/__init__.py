@@ -6,3 +6,5 @@ from .feature_vector import FeatureLoader
 from .image import ImageSetLoader
 from .sequential import AK4Loader
 
+
+from .hybrid_image_features import HybridIFLoader
