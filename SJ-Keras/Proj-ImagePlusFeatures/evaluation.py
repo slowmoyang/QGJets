@@ -18,7 +18,7 @@ import tensorflow as tf
 
 sys.path.append("..")
 from keras4jet.models import get_custom_objects
-from keras4jet.data_loader import ImageSetLoader
+from keras4jet.data_loader import HybridIFLoader
 from keras4jet.meters import OutHist
 from keras4jet.meters import ROCMeter
 from keras4jet.heatmap import Heatmap
@@ -49,25 +49,27 @@ def evaluate(saved_model_path,
     ##########################
     # training data
     ###########################
-    train_loader = ImageSetLoader(
+    train_loader = HybridIFLoader(
         path=config.training_set,
-        x=config.x,
-        x_shape=config.x_shape,
+        features=config.features,
+        image=config.image,
+        image_shape=config.image_shape,
         batch_size=1024,
         cyclic=False)
 
     for batch in train_loader:
-        y_pred = model.predict_on_batch(batch["x"])
+        y_pred = model.predict_on_batch([batch["image"], batch["features"]])
         out_hist.fill(dname="train", y_true=batch["y"], y_pred=y_pred)
 
 
     #############################
     # Test on dijet dataset
     ########################
-    dijet_loader = ImageSetLoader(
+    dijet_loader = HybridIFLoader(
         path=config.dijet_test_set,
-        x=config.x,
-        x_shape=config.x_shape,
+        features=config.features,
+        image=config.image,
+        image_shape=config.image_shape,
         extra=["pt", "eta"],
         batch_size=1024,
         cyclic=False)
@@ -90,7 +92,7 @@ def evaluate(saved_model_path,
         out_dir=heatmap_subdir)
 
     for batch in dijet_loader:
-        y_pred = model.predict_on_batch(batch["x"])
+        y_pred = model.predict_on_batch([batch["image"], batch["features"]])
         roc_dijet.append(y_true=batch["y"], y_pred=y_pred)
         out_hist.fill(dname="test_dijet", y_true=batch["y"], y_pred=y_pred)
         heatmap.fill(y_true=batch["y"], y_pred=y_pred, pt=batch["pt"], eta=batch["eta"])
@@ -101,10 +103,11 @@ def evaluate(saved_model_path,
     ##################################
     # Test on Z+jet dataset
     ###################################
-    test_zjet_loader = ImageSetLoader(
+    test_zjet_loader = HybridIFLoader(
         path=config.zjet_test_set,
-        x=config.x,
-        x_shape=config.x_shape,
+        features=config.features,
+        image=config.image,
+        image_shape=config.image_shape,
         batch_size=1024,
         cyclic=False)
 
@@ -116,7 +119,7 @@ def evaluate(saved_model_path,
     )
 
     for batch in test_zjet_loader:
-        y_pred = model.predict_on_batch(batch["x"])
+        y_pred = model.predict_on_batch([batch["image"], batch["features"]])
         roc_zjet.append(y_true=batch["y"], y_pred=y_pred)
         out_hist.fill("test_zjet", y_true=batch["y"], y_pred=y_pred)
 

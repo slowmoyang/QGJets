@@ -40,7 +40,7 @@ def train():
     parser.add_argument("--datasets_dir",
                         default="../../Data/root_100_500/3-JetImage/Shuffled",
                         type=str)
-    parser.add_argument("--model", default="large_filter", type=str)
+    parser.add_argument("--model", default="image_plus_features", type=str)
 
 
     parser.add_argument("--log_dir", default="./logs/{name}", type=str)
@@ -60,8 +60,7 @@ def train():
     # Project parameters
     parser.add_argument("--kernel_size", type=int, default=3)
     
-
-
+    parser.add_argument("--features", nargs="+", default=["axis1", "axis2", "cmult", "nmult", "ptD"])
 
     args = parser.parse_args()
 
@@ -82,36 +81,39 @@ def train():
     dataset_paths = get_dataset_paths(config.datasets_dir, config.train_sample)
     config.update(dataset_paths)
 
-    config["x"] = [
+    config["image"] = [
         "image_chad_pt_33", "image_chad_mult_33",
         "image_electron_pt_33", "image_electron_mult_33",
         "image_muon_pt_33", "image_muon_mult_33",
         "image_nhad_pt_33", "image_nhad_mult_33",
         "image_photon_pt_33", "image_photon_mult_33"]
 
-    config["x_shape"] = (len(config.x), 33, 33)
+    config["image_shape"] = (len(config.image), 33, 33)
 
-    train_loader = ImageSetLoader(
+    train_loader = HybridIFLoader(
         path=config.training_set,
-        x=config.x,
-        x_shape=config.x_shape,
+        features=config.features,
+        image=config.image,
+        image_shape=config.image_shape,
         batch_size=config.batch_size,
         cyclic=False)
 
     steps_per_epoch = int(len(train_loader) / train_loader.batch_size)
     total_step = config.num_epochs * steps_per_epoch
 
-    val_dijet_loader = ImageSetLoader(
+    val_dijet_loader = HybridIFLoader(
         path=config.dijet_validation_set,
-        x=config.x,
-        x_shape=config.x_shape,
+        features=config.features,
+        image=config.image,
+        image_shape=config.image_shape,
         batch_size=config.val_batch_size,
         cyclic=True)
 
-    val_zjet_loader = ImageSetLoader(
+    val_zjet_loader = HybridIFLoader(
         path=config.zjet_validation_set,
-        x=config.x,
-        x_shape=config.x_shape,
+        features=config.features,
+        image=config.image,
+        image_shape=config.image_shape,
         batch_size=config.val_batch_size,
         cyclic=True)
 
@@ -119,12 +121,16 @@ def train():
     #################################
     # Build & Compile a model.
     #################################
-    config["model_type"] = "image"
+    config["model_type"] = "hybrid"
+
+    config["dense_units_list"] = [32, 64, 64, 128]
 
     _model = build_a_model(
         model_type=config.model_type,
         model_name=config.model,
-        input_shape=config.x_shape,
+        image_shape=config.image_shape,
+        num_features=len(config.features),
+        dense_units_list=config.dense_units_list,
         kernel_size=config.kernel_size,
         padding="SAME")
 
@@ -175,13 +181,16 @@ def train():
                 val_zj_batch = val_zjet_loader.next()
 
                 train_loss, train_acc = model.test_on_batch(
-                    x=train_batch["x"], y=train_batch["y"])
+                    x=[train_batch["image"], train_batch["features"]],
+                    y=train_batch["y"])
 
                 dijet_loss, dijet_acc = model.test_on_batch(
-                    x=val_dj_batch["x"], y=val_dj_batch["y"])
+                    x=[val_dj_batch["image"], val_dj_batch["features"]],
+                    y=val_dj_batch["y"])
 
                 zjet_loss, zjet_acc = model.test_on_batch(
-                    x=val_zj_batch["x"], y=val_zj_batch["y"])
+                    x=[val_zj_batch["image"], val_zj_batch["features"]],
+                    y=val_zj_batch["y"])
 
                 # FIXME
                 val_loss_accum += dijet_loss
@@ -219,7 +228,9 @@ def train():
                 _model.save(filepath)
 
             # Train on batch
-            model.train_on_batch(x=train_batch["x"], y=train_batch["y"])
+            model.train_on_batch(
+                x=[train_batch["image"], train_batch["features"]],
+                y=train_batch["y"])
             step += 1
 
         # FIXME
