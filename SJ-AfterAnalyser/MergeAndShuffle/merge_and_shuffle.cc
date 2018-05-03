@@ -11,15 +11,18 @@
 
 
 int main(int argc, char** argv) {
-  const char* kEventType = argv[1];
+  TString data_dir = argv[1];
+  const char* kEventType = argv[2];
+  const char* kDatasetType = argv[3];
   const TString kTreeName = "jetAnalyser";
 
   std::vector<TString> in_paths;
 
-  TString path_fmt = "../Data/pt_%d_%d/3-JetImage/Shuffled/%s.root";
+  TString path_fmt = gSystem->ConcatFileName(data_dir, "pt_%d_%d/3-JetImage/Shuffled/%s_%s_set.root");
+
   for(Int_t min_pt = 100; min_pt <= 900; min_pt += 100) { 
     Int_t max_pt = min_pt + 100;
-    TString path = TString::Format(path_fmt, min_pt, max_pt, kEventType);
+    TString path = TString::Format(path_fmt, min_pt, max_pt, kEventType, kDatasetType);
     std::cout << path << std::endl;
     in_paths.push_back(path);
   }
@@ -29,12 +32,12 @@ int main(int argc, char** argv) {
   const Int_t kForestEntries = myforest->GetEntries();
 
   // Step4
-  TString out_dir = "../Data/pt_100_1000/3-JetImage/";
+  TString out_dir = gSystem->ConcatFileName(data_dir, "pt_100_1000_v2/3-JetImage/");
   if(gSystem->AccessPathName(out_dir)) {
     gSystem->mkdir(out_dir, true);
   }
 
-  TString out_name = TString::Format("%s.root", kEventType);
+  TString out_name = TString::Format("%s_%s_set.root", kEventType, kDatasetType);
   TString out_path = gSystem->ConcatFileName(out_dir, out_name);
 
   TFile* out_file = TFile::Open(out_path, "RECREATE");

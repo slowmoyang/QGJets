@@ -1,0 +1,4 @@
+Warning in <TInterpreter::ReadRootmapFile>: class  TUnfold found in libUnfold.so  is already in libHist.so 
+Warning in <TInterpreter::ReadRootmapFile>: class  TUnfoldBinning found in libUnfold.so  is already in libHist.so 
+Warning in <TInterpreter::ReadRootmapFile>: class  TUnfoldDensity found in libUnfold.so  is already in libHist.so 
+Warning in <TInterpreter::ReadRootmapFile>: class  TUnfoldSys found in libUnfold.so  is already in libHist.so 
