@@ -2,206 +2,246 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from six.moves import xrange
+
 import sys
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-import matplotlib
-matplotlib.use('Agg')
+import matplotlib as mpl
+mpl.use("Agg")
 
-import time
 import argparse
 import numpy as np
 from datetime import datetime
+
 import tensorflow as tf
 
 import keras
+import keras.backend as K
 from keras import optimizers
 from keras import losses
 from keras import metrics
 from keras.utils import multi_gpu_model 
 
-import keras.backend as K
-
-from pipeline import DataLoader
-# from pipeline import SeqDataLoader as DataLoader
-
 sys.path.append("..")
 from keras4jet.models import build_a_model
+from keras4jet.data_loader import AK4Loader
 from keras4jet.meters import Meter
-from keras4jet.utils import (
-    get_log_dir,
-    get_available_gpus,
-    Logger
-)
+from keras4jet.metrics_wrapper import roc_auc_score
+from keras4jet import train_utils
+from keras4jet.utils import get_log_dir
+from keras4jet.utils import Config
+from keras4jet.utils import get_available_gpus
+from keras4jet.utils import get_dataset_paths
 
-if __name__ == '__main__':
+def train():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--model", type=str, default="ak4")
-    parser.add_argument("--directory", type=str, default="../../SJ-JetImage/step5/")
-    parser.add_argument("--train_data", type=str, default="dijet")
-    parser.add_argument(
-	    '--log_dir', type=str,
-	    default='./logs/{name}-{date}'.format(
-            name="{name}", date=datetime.today().strftime("%Y-%m-%d_%H-%M-%S")),
-	        help='the directory path of dataset')
+    parser.add_argument("--train_sample", default="dijet", type=str)
+    parser.add_argument("--datasets_dir",
+                        default="/data/slowmoyang/QGJets/root_100_200/3-JetImage/",
+                        type=str)
+    parser.add_argument("--model", default="ak4_without_residual", type=str)
 
-    parser.add_argument("--num_epochs", type=int, default=10)
-    parser.add_argument("--num_gpus", type=int, default=len(get_available_gpus()))
-    parser.add_argument("--train_batch_size", type=int, default=500)
-    parser.add_argument("--val_batch_size", type=int, default=500)
 
-    # Hyperparameter
-    parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--maxlen", type=int, default=50)
+    parser.add_argument("--log_dir", default="./logs/{name}", type=str)
+    parser.add_argument("--num_gpus", default=len(get_available_gpus()), type=int)
+    parser.add_argument("--multi-gpu", default=False, action='store_true', dest='multi_gpu')
 
-    # Freq
-    parser.add_argument("--val_freq", type=int, default=100)
-    parser.add_argument("--save_freq", type=int, default=500)
+    # Hyperparameters
+    parser.add_argument("--num_epochs", default=30, type=int)
+    parser.add_argument("--batch_size", default=512, type=int)
+    parser.add_argument("--val_batch_size", default=1024, type=int)
+    parser.add_argument("--lr", default=0.001, type=float)
+
+    # Frequencies
+    parser.add_argument("--val_freq", type=int, default=32)
+    parser.add_argument("--save_freq", type=int, default=32)
+
+    # Project parameters
+    parser.add_argument("--kernel_size", type=int, default=3)
 
     args = parser.parse_args()
 
-    train_data = args.directory+"/dijet_train.root"
-    val_dijet_data = args.directory+"/dijet_test.root"
-    val_zjet_data = args.directory+"/z_jet_test.root"
+    #########################################################
+    # Log directory
+    #######################################################
+    if '{name}' in args.log_dir:
+        args.log_dir = args.log_dir.format(
+            name="Untitled_{}".format(
+                datetime.today().strftime("%Y-%m-%d_%H-%M-%S")))
+    log_dir = get_log_dir(path=args.log_dir, creation=True)
+ 
+    # Config
+    config = Config(dpath=log_dir.path, mode="WRITE")
+    config.update(args)
 
-    if '{name}' in args.log_dir: args.log_dir = args.log_dir.format(name=args.model)
-    log_dir = get_log_dir(path=args.log_dir,creation=True)
+    dataset_paths = get_dataset_paths(config.datasets_dir, config.train_sample)
+    config.update(dataset_paths)
 
-    logger = Logger(log_dir.path, "WRITE")
-    logger.get_args(args)
-    logger["train_data"] = train_data
-    logger["val_dijet_data"] = val_dijet_data
-    logger["val_zjet_data"] = val_zjet_data
+    ########################################
+    # Load training and validation datasets
+    ########################################
 
 
-    loss = 'binary_crossentropy'
-    optimizer = optimizers.Adam(lr=args.lr)
-    metric_list = ['accuracy']
-
-    # data loader
-    train_loader = DataLoader(
-        path=train_data,
-        maxlen=args.maxlen,
-        batch_size=args.train_batch_size,
+    train_loader = AK4Loader(
+        path=config.training_set,
+        batch_size=config.batch_size,
         cyclic=False)
+    config["maxlen"] = train_loader.maxlen
 
-    steps_per_epoch=np.ceil(len(train_loader)/train_loader.batch_size).astype(int)
-    total_step = args.num_epochs * steps_per_epoch
+    steps_per_epoch = int(len(train_loader) / train_loader.batch_size)
+    total_step = config.num_epochs * steps_per_epoch
 
-    val_dijet_loader = DataLoader(
-        path=val_dijet_data,
-        maxlen=args.maxlen,
-        batch_size=args.val_batch_size,
+    val_dijet_loader = AK4Loader(
+        path=config.dijet_validation_set,
+        maxlen=config.maxlen,
+        batch_size=config.val_batch_size,
         cyclic=True)
 
-    val_zjet_loader = DataLoader(
-        path=val_zjet_data,
-        maxlen=args.maxlen,
-        batch_size=args.val_batch_size,
+    val_zjet_loader = AK4Loader(
+        path=config.zjet_validation_set,
+        maxlen=config.maxlen,
+        batch_size=config.val_batch_size, 
         cyclic=True)
 
 
-    # build a model and compile it
-    model = build_a_model(
-        model_name=args.model,
-        **train_loader.get_shapes())
+    #################################
+    # Build & Compile a model.
+    #################################
+    config["model_type"] = "sequential"
 
+
+    input0_shape, input1_shape = train_loader.get_shape()
+    _model = build_a_model(
+        model_type=config.model_type,
+        model_name=config.model,
+        input0_shape=input0_shape,
+        input1_shape=input1_shape)
+
+    if config.multi_gpu:
+        model = multi_gpu_model(_model, gpus=config.num_gpus)
+    else:
+        model = _model
+
+    # TODO config should have these information.
+    loss = 'categorical_crossentropy'
+    optimizer = optimizers.Adam(lr=config.lr)
+    metric_list = ['accuracy', roc_auc_score]
 
     model.compile(
         loss=loss,
-        optimizer=optimizers.Adam(lr=1e-2),
-        metrics=['accuracy'])
+        optimizer=optimizer,
+        metrics=metric_list)
 
+    lr_scheduler = train_utils.ReduceLROnPlateau(model)
 
-    # Meter
-    tr_acc_ = "train_{}_acc".format(args.train_data)
-    tr_loss_ = "train_{}_loss".format(args.train_data)
+    #######################################
+    # 
+    ###########################################
 
     meter = Meter(
-        data_name_list=[
-            "step",
-            tr_acc_, "val_dijet_acc", "val_zjet_acc",
-            tr_loss_, "val_dijet_loss", "val_zjet_loss"],
+        name_list=["step", "lr",
+                   "train_loss", "dijet_loss", "zjet_loss",
+                   "train_acc", "dijet_acc", "zjet_acc",
+                   "train_auc", "dijet_auc", "zjet_auc"],
         dpath=log_dir.validation.path)
-    
-    meter.prepare(
-        data_pair_list=[("step", tr_acc_),
-                        ("step", "val_dijet_acc"),
-                        ("step", "val_zjet_acc")],
-        title="Accuracy")
 
-    meter.prepare(
-        data_pair_list=[("step", tr_loss_),
-                        ("step", "val_dijet_loss"),
-                        ("step", "val_zjet_loss")],
-        title="Loss(Cross-entropy)")
-
-
+    #######################################
     # Training with validation
+    #######################################
     step = 0
-    start_time = time.time()
-    for epoch in range(args.num_epochs):
+    for epoch in range(config.num_epochs):
+        print("Epoch [{epoch}/{num_epochs}]".format(epoch=(epoch+1), num_epochs=config.num_epochs))
 
-        print("Epoch [{epoch}/{num_epochs}]".format(
-            epoch=(epoch+1), num_epochs=args.num_epochs))
+        for train_batch in train_loader:
+            # Validation
+            if step % config.val_freq == 0 or step % config.save_freq == 0:
+                val_dj_batch = val_dijet_loader.next()
+                val_zj_batch = val_zjet_loader.next()
 
+                train_loss, train_acc, train_auc = model.test_on_batch(
+                    x=[train_batch["x_daus"], train_batch["x_glob"]],
+                    y=train_batch["y"])
+                dijet_loss, dijet_acc, dijet_auc = model.test_on_batch(
+                    x=[val_dj_batch["x_daus"], val_dj_batch["x_glob"]],
+                    y=val_dj_batch["y"])
+                zjet_loss, zjet_acc, zjet_auc = model.test_on_batch(
+                    x=[val_zj_batch["x_daus"], val_zj_batch["x_glob"]],
+                    y=val_zj_batch["y"])
 
-        for x_daus_train, x_glob_train, y_train in train_loader:
+                lr_scheduler.monitor(metrics=dijet_loss)
 
-            # Validate model
-            if step % args.val_freq == 0:
-                x_daus_dijet, x_glob_dijet, y_dijet = val_dijet_loader.next()
-                x_daus_zjet, x_glob_zjet, y_zjet = val_zjet_loader.next()
+                print("Step [{step}/{total_step}]".format(step=step, total_step=total_step))
+                print("  Training:\n\tLoss {:.3f} | Acc. {:.3f} | AUC {:.3f}".format(train_loss, train_acc, train_auc))
+                print("  Validation on Dijet\n\tLoss {:.3f} | Acc. {:.3f} | AUC {:.3f}".format(dijet_loss, dijet_acc, dijet_auc))
+                print("  Validation on Z+jet\n\tLoss {:.3f} | Acc. {:.3f} | AUC {:.3f}".format(zjet_loss,zjet_acc, zjet_auc))
 
-                train_loss, train_acc = model.test_on_batch(
-                    x=[x_daus_train, x_glob_train], y=y_train)
+                meter.append({
+                    "step": step, "lr": K.get_value(model.optimizer.lr),
+                    "train_loss": train_loss, "dijet_loss": dijet_loss, "zjet_loss": zjet_loss,
+                    "train_acc": train_acc, "dijet_acc": dijet_acc, "zjet_acc": zjet_acc,
+                    "train_auc": train_auc, "dijet_auc": dijet_auc, "zjet_auc": zjet_auc})
 
-                dijet_loss, dijet_acc = model.test_on_batch(
-                    x=[x_daus_dijet, x_glob_dijet], y=y_dijet)
-
-                zjet_loss, zjet_acc = model.test_on_batch(
-                    x=[x_daus_zjet, x_glob_zjet], y=y_zjet)
-
-                print("\nStep [{step}/{total_step}]".format(
-                    step=step, total_step=total_step))
-
-                print("  Training:")
-                print("    Loss {train_loss:.3f} | Acc. {train_acc:.3f}".format(
-                    train_loss=train_loss, train_acc=train_acc))
-
-                print("  Validation on Dijet")
-                print("    Loss {val_loss:.3f} | Acc. {val_acc:.3f}".format(
-                    val_loss=dijet_loss, val_acc=dijet_acc))
-
-                print("  Validation on Z+jet")
-                print("    Loss {val_loss:.3f} | Acc. {val_acc:.3f}".format(
-                    val_loss=zjet_loss, val_acc=zjet_acc))
-
-                meter.append(data_dict={
-                    "step": step,
-                    tr_loss_: train_loss,
-                    "val_dijet_loss": dijet_loss,
-                    "val_zjet_loss": zjet_loss,
-                    tr_acc_: train_acc,
-                    "val_dijet_acc": dijet_acc,
-                    "val_zjet_acc": zjet_acc})
-
-            if (step!=0) and (step % args.save_freq == 0):
+            # Save model
+            if (step != 0) and (step % config.save_freq == 0):
                 filepath = os.path.join(
                     log_dir.saved_models.path,
-                    "{name}_{step}.h5".format(name="model", step=step))
-                model.save(filepath)
-
+                    "model_step-{step:06d}_loss-{loss:.3f}_acc-{acc:.3f}_auc-{auc:.3f}.h5".format(
+                        step=step, loss=dijet_loss, acc=dijet_acc, auc=dijet_auc))
+                _model.save(filepath)
 
             # Train on batch
             model.train_on_batch(
-                x=[x_daus_train, x_glob_train], y=y_train)
+                x=[train_batch["x_daus"], train_batch["x_glob"]],
+                 y=train_batch["y"])
             step += 1
-    end_time = time.time()
-    logger["training_time"] = end_time - start_time
-    print("Training is over! :D")
+
+        ###############################
+        # On Epoch End
+        ###########################
+        lr_scheduler.step(epoch=epoch)
+
+    #############################
+    #
+    #############################3
     filepath = os.path.join(log_dir.saved_models.path, "model_final.h5")
-    model.save(filepath)
+    _model.save(filepath)
+
+    print("Training is over! :D")
+
+    meter.add_plot(
+        x="step",
+        ys=[("train_loss", "Train/Dijet"),
+            ("dijet_loss", "Validation/Dijet"),
+            ("zjet_loss", "Validation/Z+jet")],
+        title="Loss(CrossEntropy)", xlabel="Step", ylabel="Loss")
+
+    meter.add_plot(
+        x="step",
+        ys=[("train_acc", "Train/Dijet"),
+            ("dijet_acc", "Validation/Dijet"),
+            ("zjet_acc", "Validation/Z+jet")],
+        title="Accuracy", xlabel="Step", ylabel="Acc.")
+
+    meter.add_plot(
+        x="step",
+        ys=[("train_auc", "Train/Dijet"),
+            ("dijet_auc", "Validation/Dijet"),
+            ("zjet_auc", "Validation/Z+jet")],
+        title="AUC", xlabel="Step", ylabel="AUC")
+
+
+
     meter.finish()
-    logger.finish()
+    config.finish()
+    
+    return log_dir
+
+if __name__ == "__main__":
+    from evaluation import evaluate_all
+    log_dir = train()
+    evaluate_all(log_dir)
+
+

@@ -2,9 +2,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import sys
-import os.path
-
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 import argparse
 from datetime import datetime
 import matplotlib as mpl
@@ -13,47 +13,65 @@ mpl.use('Agg')
 import keras
 from keras.models import load_model
 from keras.utils import multi_gpu_model 
+import tensorflow as tf
 
-from models.layer import add_an_sigmoid_layer
-from pipeline import DataLoader
 
 sys.path.append("..")
-from meters import ROCMeter, OutHist
-from utils import (
-    get_log_dir,
-    get_saved_model_paths,
-    Logger)
+from keras4jet.models import get_custom_objects
+from keras4jet.data_loader import AK4Loader
+from keras4jet.metrics_wrapper import roc_auc_score
+from keras4jet.meters import OutHist
+from keras4jet.meters import ROCMeter
+from keras4jet.heatmap import Heatmap
+from keras4jet.utils import get_log_dir 
+from keras4jet.utils import Config
+from keras4jet.utils import get_available_gpus
+from keras4jet.utils import get_saved_model_paths
+from keras4jet.utils import get_filename
+from keras4jet.eval_utils import find_good_models
+from keras4jet.eval_utils import parse_model_path
 
 
 def evaluate(saved_model_path,
              step,
              log_dir):
+    # TEST
+    config = Config(log_dir.path, "READ")
 
-    logger = Logger(log_dir.path, "READ")
+    custom_objects = get_custom_objects(config.model_type, config.model)
+    custom_objects.update({"roc_auc_score": roc_auc_score})
 
-    model = load_model(filepath=saved_model_path)
+    model = load_model(saved_model_path, custom_objects=custom_objects)
+
+    #model = multi_gpu_model(model, 2)
 
     out_hist = OutHist(
         dpath=log_dir.output_histogram.path,
         step=step,
         dname_list=["train", "test_dijet", "test_zjet"])
 
-    # on training data
-    train_data_loader = DataLoader(
-        path=logger["train_data"],
-        maxlen=logger["maxlen"],
-        batch_size=1000,
+    ##########################
+    # training data
+    ###########################
+    train_loader = AK4Loader(
+        path=config.training_set,
+        maxlen=config.maxlen,
+        batch_size=1024,
         cyclic=False)
 
-    for x_daus, x_glob, y in train_data_loader:
-        preds = model.predict_on_batch([x_daus, x_glob])
-        out_hist.fill(dname="train", labels=y, preds=preds)
+    for batch in train_loader:
+        y_pred = model.predict_on_batch([batch["x_daus"], batch["x_glob"]])
+        out_hist.fill(dname="train", y_true=batch["y"], y_pred=y_pred)
 
+
+    #############################
     # Test on dijet dataset
-    test_dijet_loader = DataLoader(
-        path=logger["val_dijet_data"],
-        maxlen=logger["maxlen"],
-        batch_size=1000,
+    ########################
+    dijet_loader = AK4Loader(
+        path=config.dijet_test_set,
+        maxlen=config.maxlen,
+        extra=["pt", "eta"],
+        batch_size=1024,
         cyclic=False)
 
     roc_dijet = ROCMeter(
@@ -62,19 +80,33 @@ def evaluate(saved_model_path,
         title="Test on Dijet",
         prefix="dijet_")
 
-    for x_daus, x_glob, y in test_dijet_loader:
-        preds = model.predict_on_batch([x_daus, x_glob])
+    heatmap_subdir = os.path.join(
+        log_dir.heatmap.path,
+        get_filename(saved_model_path))
 
-        roc_dijet.append(labels=y, preds=preds)
-        out_hist.fill(dname="test_dijet", labels=y, preds=preds)
+    if not os.path.exists(heatmap_subdir):
+        os.mkdir(heatmap_subdir)
+
+    heatmap = Heatmap(
+        data_set=config.dijet_test_set,
+        out_dir=heatmap_subdir)
+
+    for batch in dijet_loader:
+        y_pred = model.predict_on_batch([batch["x_daus"], batch["x_glob"]])
+        roc_dijet.append(y_true=batch["y"], y_pred=y_pred)
+        out_hist.fill(dname="test_dijet", y_true=batch["y"], y_pred=y_pred)
+        heatmap.fill(y_true=batch["y"], y_pred=y_pred, pt=batch["pt"], eta=batch["eta"])
 
     roc_dijet.finish()
+    heatmap.finish()
 
+    ##################################
     # Test on Z+jet dataset
-    test_zjet_loader = DataLoader(
-        path=logger["val_zjet_data"],
-        maxlen=logger["maxlen"],
-        batch_size=1000,
+    ###################################
+    test_zjet_loader = AK4Loader(
+        path=config.zjet_test_set,
+        maxlen=config.maxlen,
+        batch_size=1024,
         cyclic=False)
 
     roc_zjet = ROCMeter(
@@ -83,37 +115,32 @@ def evaluate(saved_model_path,
         title="Test on Z+jet",
         prefix="zjet_")
 
-    for x_daus, x_glob, y in test_zjet_loader:
-        preds = model.predict_on_batch([x_daus, x_glob])
-        roc_zjet.append(labels=y, preds=preds)
-        out_hist.fill("test_zjet", labels=y, preds=preds)
+    for batch in test_zjet_loader:
+        y_pred = model.predict_on_batch([batch["x_daus"], batch["x_glob"]])
+        roc_zjet.append(y_true=batch["y"], y_pred=y_pred)
+        out_hist.fill("test_zjet", y_true=batch["y"], y_pred=y_pred)
 
     roc_zjet.finish()
 
     out_hist.finish()
 
 
-def main():
-    parser = argparse.ArgumentParser()
+def evaluate_all(log_dir):
+    if isinstance(log_dir, str):
+        log_dir = get_log_dir(log_dir, creation=False)
 
+    good_models = find_good_models(log_dir)
+    for i, path in enumerate(good_models):
+        step = parse_model_path(path)["step"]
+        evaluate(path, step, log_dir)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         '--log_dir', type=str, required=True,
     	help='the directory path of dataset')
-
     args = parser.parse_args()
-
     log_dir = get_log_dir(path=args.log_dir, creation=False)
 
 
-    path_and_step = get_saved_model_paths(log_dir.saved_models.path)
-    for i, (saved_model_path, step) in enumerate(path_and_step):
-        print("\n\n\n[{i}/{total}]: {path}".format(
-            i=i, total=len(path_and_step), path=saved_model_path))
-        evaluate(
-            saved_model_path,
-            step,
-            log_dir)
-
-
-if __name__ == "__main__":
-    main()
+    evaluate_all(log_dir)
