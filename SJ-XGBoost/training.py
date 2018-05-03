@@ -35,7 +35,7 @@ gROOT.SetBatch(True)
 from data_loading import load_dataset
 from utils import Directory
 from utils import Config
-from utils import get_path_of_datasets
+from utils import parse_dataset_path
 
 
 
@@ -45,10 +45,6 @@ def main():
     ##############################
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--event_type", default="dijet", type=str)
-    parser.add_argument("--min_pt", type=int, required=True)
-    parser.add_argument("--max_pt", type=int, required=True)
-
     parser.add_argument("--feature_names", nargs="+", type=str,
         default=["ptD", "axis1", "axis2", "cmult", "nmult"])
 
@@ -56,6 +52,9 @@ def main():
         default=["pt", "eta"])
 
     parser.add_argument("--log_dname", default="XGB", type=str)
+    parser.add_argument("--train_path", type=str)
+    parser.add_argument("--valid_path", type=str)
+    parser.add_argument("--test_path", type=str)
 
     # General Parameters
     parser.add_argument("--booster", default="gbtree", type=str)
@@ -76,7 +75,6 @@ def main():
     parser.add_argument("--alpha", default=0, type=float,
         help="L1 regularization term on weights")
 
-
     # Additional parameters for Dart Booster
     parser.add_argument("--sample_type", default="uniform", help='"uniform" or "weighted"')
     parser.add_argument("--normalize_type", default="tree", help='"tree" or "forest"')
@@ -94,8 +92,9 @@ def main():
     ############################################
     # Log Directory
     ########################################
-    log_dname = "{}_{}_{}".format(
-        "pt", args.min_pt, args.max_pt)
+    min_pt, max_pt = parse_dataset_path(args.train_path)
+
+    log_dname = "{}_{}_{}".format("root", min_pt, max_pt)
 
     log_dpath = os.path.join("./logs", log_dname)
     log_dir = Directory(log_dpath, creation=True)
@@ -109,16 +108,17 @@ def main():
     ########################
     # Data Loading
     #######################
-    train_path, valid_path, test_path = get_path_of_datasets(
-        event_type=config.event_type, min_pt=config.min_pt, max_pt=config.max_pt)
+    #train_path, valid_path, test_path = get_path_of_datasets(
+    #    event_type=config.event_type, min_pt=config.min_pt, max_pt=config.max_pt)
 
-    config["training_path"] = train_path
-    config["validation_path"] = valid_path
-    config["test_path"] = test_path
 
-    train_set, train_extra = load_dataset(train_path, features=config.feature_names, extra=config.extra) 
-    valid_set, valid_extra = load_dataset(valid_path, features=config.feature_names, extra=config.extra) 
-    test_set, test_extra = load_dataset(test_path, features=config.feature_names, extra=config.extra) 
+    config["training_path"] = args.train_path
+    config["validation_path"] = args.valid_path
+    config["test_path"] = args.test_path
+
+    train_set, train_extra = load_dataset(args.train_path, features=config.feature_names, extra=config.extra) 
+    valid_set, valid_extra = load_dataset(args.valid_path, features=config.feature_names, extra=config.extra) 
+    test_set, test_extra = load_dataset(args.test_path, features=config.feature_names, extra=config.extra) 
 
     config["num_train_set"] = train_set[0].shape[0]
     config["num_valid_set"] = valid_set[0].shape[0]

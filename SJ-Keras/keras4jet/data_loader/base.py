@@ -29,7 +29,7 @@ class DataLoaderBase(object):
         self.example_list = example_list
         self.extra = extra
         self.num_classes = num_classes
-        self.batch_size = batch_size
+        self._batch_size = batch_size
         self.cyclic = cyclic
         self.tree_name = tree_name
 
@@ -39,7 +39,20 @@ class DataLoaderBase(object):
         else:
             self.get_data = self._get_data_with_extra
         self._start = 0
-        
+
+    @property
+    def batch_size(self):
+        return self._batch_size
+
+    @batch_size.setter
+    def batch_size(self, value):
+        if isinstance(value, int):
+            raise ValueError("")
+        if value < 1:
+            raise ValueError("")
+
+        self._batch_size = value
+ 
     def __len__(self):
         return int(self.tree.GetEntries())
 
@@ -74,7 +87,7 @@ class DataLoaderBase(object):
     def next(self):
         if self.cyclic:
             if self._start + 1 < len(self):
-                end = self._start + self.batch_size
+                end = self._start + self._batch_size
                 slicing = slice(self._start, end)
                 if end <= len(self):
                     self._start = end
@@ -82,13 +95,10 @@ class DataLoaderBase(object):
                     return batch
                 else:
                     batch = self[slicing]
-                    
                     self._start = 0
                     end = end - len(self)
-
                     batch1 = self[slice(self._start, end)]
                     self._start = end
-                    
                     batch = {key: np.append(batch[key], batch1[key], axis=0) for key in self.keys}
                     return batch
             else:
@@ -97,7 +107,7 @@ class DataLoaderBase(object):
                 return batch
         else:
             if self._start + 1 < len(self):
-                end = self._start + self.batch_size
+                end = self._start + self._batch_size
                 slicing = slice(self._start, end)
                 self._start = end
                 batch = self[slicing]
@@ -109,9 +119,8 @@ class DataLoaderBase(object):
         return self.next()
 
     def __iter__(self):
-        for start in xrange(0, len(self), self.batch_size): 
-            yield self[slice(start, start+self.batch_size)]
-
+        for start in xrange(0, len(self), self._batch_size): 
+            yield self[slice(start, start + self._batch_size)]
 
 
 class SeqDataLoaderBase(DataLoaderBase):
