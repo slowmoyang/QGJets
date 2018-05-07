@@ -69,7 +69,7 @@ def build_a_model(image_shape, # Conv
     h_conv = Conv2D(filters=filters_list[0], kernel_size=kernel_size, strides=2, padding=padding)(x_image)
     h_conv = Activation(activation)(h_conv)
 
-    for filters in filter_list[1:]:
+    for filters in filters_list[1:]:
         h_conv = conv_block(filters, kernel_size, 1, padding, activation)(h_conv)
         if (i != 0) and (i % 2 == 0):
             h_conv = MaxPooling2D(2)(h_conv)
