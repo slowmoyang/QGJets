@@ -58,7 +58,7 @@ def train():
     parser.add_argument("--save_freq", type=int, default=250)
 
     # Project parameters
-    parser.add_argument("--kernel_size", type=int, default=3)
+    parser.add_argument("--kernel_size", type=int, default=5)
     
     parser.add_argument("--features", nargs="+", default=["axis1", "axis2", "cmult", "nmult", "ptD"])
 
@@ -130,7 +130,8 @@ def train():
         model_name=config.model,
         image_shape=config.image_shape,
         num_features=len(config.features),
-        dense_units_list=config.dense_units_list,
+        units_list=[32, 64, 128],
+        filters_list=[64, 64, 128, 128],
         kernel_size=config.kernel_size,
         padding="SAME")
 
