@@ -1,6 +1,10 @@
 from __future__ import absolute_import
+
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+import functools
+
+import numpy as np
 
 import keras
 import keras.backend as K
@@ -37,14 +41,21 @@ class ReduceLROnPlateau(object):
                              threshold_mode=threshold_mode)
         self._reset()
 
+        self._metrics = []
+
     def _reset(self):
         """Resets num_bad_epochs counter and cooldown counter."""
         self.best = self.mode_worse
         self.cooldown_counter = 0
         self.num_bad_epochs = 0
 
-    def step(self, metrics, epoch=None):
-        current = metrics
+    def step(self, metrics=None, epoch=None):
+        if metrics is None:
+            current = np.mean(self._metrics)
+            self.clear_metrics()
+        else:
+            current = metrics
+
         if epoch is None:
             epoch = self.last_epoch = self.last_epoch + 1
         self.last_epoch = epoch
@@ -83,25 +94,38 @@ class ReduceLROnPlateau(object):
     def in_cooldown(self):
         return self.cooldown_counter > 0
 
+    def _cmp(self, mode, threshold_mode, threshold, a, best):
+        if mode == 'min' and threshold_mode == 'rel':
+            rel_epsilon = 1. - threshold
+            return a < best * rel_epsilon
+        elif mode == 'min' and threshold_mode == 'abs':
+            return a < best - threshold
+        elif mode == 'max' and threshold_mode == 'rel':
+            rel_epsilon = threshold + 1.
+            return a > best * rel_epsilon
+        else:  # mode == 'max' and epsilon_mode == 'abs':
+            return a > best + threshold
+
     def _init_is_better(self, mode, threshold, threshold_mode):
         if mode not in {'min', 'max'}:
             raise ValueError('mode ' + mode + ' is unknown!')
         if threshold_mode not in {'rel', 'abs'}:
-            raise ValueError('threshold mode ' + mode + ' is unknown!')
-        if mode == 'min' and threshold_mode == 'rel':
-            rel_epsilon = 1. - threshold
-            self.is_better = lambda a, best: a < best * rel_epsilon
-            self.mode_worse = float('Inf')
-        elif mode == 'min' and threshold_mode == 'abs':
-            self.is_better = lambda a, best: a < best - threshold
-            self.mode_worse = float('Inf')
-        elif mode == 'max' and threshold_mode == 'rel':
-            rel_epsilon = threshold + 1.
-            self.is_better = lambda a, best: a > best * rel_epsilon
-            self.mode_worse = -float('Inf')
-        else:  # mode == 'max' and epsilon_mode == 'abs':
-            self.is_better = lambda a, best: a > best + threshold
-            self.mode_worse = -float('Inf')
+            raise ValueError('threshold mode ' + threshold_mode + ' is unknown!')
+        if mode == 'min':
+            self.mode_worse = float('inf')
+        else:  # mode == 'max':
+            self.mode_worse = -1 * float('inf')
+
+        self.is_better = functools.partial(self._cmp, mode, threshold_mode, threshold)
+
+
+    def monitor(self, metrics):
+        self._metrics.append(metrics)
+
+    def clear_metrics(self):
+        self.metrics = []
+
+
 
 
 if __name__ == "__main__":

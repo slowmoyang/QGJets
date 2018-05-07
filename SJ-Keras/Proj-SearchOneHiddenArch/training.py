@@ -26,7 +26,7 @@ from keras.utils import multi_gpu_model
 
 sys.path.append("..")
 from keras4jet.models import build_a_model
-from keras4jet.data_loader import AK4Loader
+from keras4jet.data_loader import FeatureLoader
 from keras4jet.meters import Meter
 from keras4jet.metrics_wrapper import roc_auc_score
 from keras4jet import train_utils
@@ -42,15 +42,14 @@ def train():
     parser.add_argument("--datasets_dir",
                         default="/data/slowmoyang/QGJets/root_100_200/3-JetImage/",
                         type=str)
-    parser.add_argument("--model", default="ak4_without_residual", type=str)
-
+    parser.add_argument("--model", default="dnn", type=str)
 
     parser.add_argument("--log_dir", default="./logs/{name}", type=str)
     parser.add_argument("--num_gpus", default=len(get_available_gpus()), type=int)
     parser.add_argument("--multi-gpu", default=False, action='store_true', dest='multi_gpu')
 
     # Hyperparameters
-    parser.add_argument("--num_epochs", default=30, type=int)
+    parser.add_argument("--num_epochs", default=5, type=int)
     parser.add_argument("--batch_size", default=512, type=int)
     parser.add_argument("--val_batch_size", default=1024, type=int)
     parser.add_argument("--lr", default=0.001, type=float)
@@ -60,7 +59,8 @@ def train():
     parser.add_argument("--save_freq", type=int, default=32)
 
     # Project parameters
-    parser.add_argument("--kernel_size", type=int, default=3)
+    parser.add_argument("--hidden_units", type=int, default=100)
+    parser.add_argument("--x", nargs="+", default=["cmult", "nmult", "axis1", "axis2", "ptD"])
 
     args = parser.parse_args()
 
@@ -84,41 +84,39 @@ def train():
     # Load training and validation datasets
     ########################################
 
-
-    train_loader = AK4Loader(
+    train_loader = FeatureLoader(
         path=config.training_set,
+        x=config.x,
         batch_size=config.batch_size,
         cyclic=False)
-    config["maxlen"] = train_loader.maxlen
 
     steps_per_epoch = int(len(train_loader) / train_loader.batch_size)
     total_step = config.num_epochs * steps_per_epoch
 
-    val_dijet_loader = AK4Loader(
+    val_dijet_loader = FeatureLoader(
         path=config.dijet_validation_set,
-        maxlen=config.maxlen,
+        x=config.x,
         batch_size=config.val_batch_size,
         cyclic=True)
 
-    val_zjet_loader = AK4Loader(
+    val_zjet_loader = FeatureLoader(
         path=config.zjet_validation_set,
-        maxlen=config.maxlen,
-        batch_size=config.val_batch_size, 
+        x=config.x,
+        batch_size=config.val_batch_size,
         cyclic=True)
 
 
     #################################
     # Build & Compile a model.
     #################################
-    config["model_type"] = "sequential"
+    config["model_type"] = "features"
 
-
-    input0_shape, input1_shape = train_loader.get_shape()
     _model = build_a_model(
         model_type=config.model_type,
         model_name=config.model,
-        input0_shape=input0_shape,
-        input1_shape=input1_shape)
+        num_features=len(config.x),
+        units_list=[config.hidden_units])
+        
 
     if config.multi_gpu:
         model = multi_gpu_model(_model, gpus=config.num_gpus)
@@ -161,15 +159,9 @@ def train():
                 val_dj_batch = val_dijet_loader.next()
                 val_zj_batch = val_zjet_loader.next()
 
-                train_loss, train_acc, train_auc = model.test_on_batch(
-                    x=[train_batch["x_daus"], train_batch["x_glob"]],
-                    y=train_batch["y"])
-                dijet_loss, dijet_acc, dijet_auc = model.test_on_batch(
-                    x=[val_dj_batch["x_daus"], val_dj_batch["x_glob"]],
-                    y=val_dj_batch["y"])
-                zjet_loss, zjet_acc, zjet_auc = model.test_on_batch(
-                    x=[val_zj_batch["x_daus"], val_zj_batch["x_glob"]],
-                    y=val_zj_batch["y"])
+                train_loss, train_acc, train_auc = model.test_on_batch(x=train_batch["x"], y=train_batch["y"])
+                dijet_loss, dijet_acc, dijet_auc = model.test_on_batch(x=val_dj_batch["x"], y=val_dj_batch["y"])
+                zjet_loss, zjet_acc, zjet_auc = model.test_on_batch(x=val_zj_batch["x"], y=val_zj_batch["y"])
 
                 lr_scheduler.monitor(metrics=dijet_loss)
 
@@ -193,9 +185,7 @@ def train():
                 _model.save(filepath)
 
             # Train on batch
-            model.train_on_batch(
-                x=[train_batch["x_daus"], train_batch["x_glob"]],
-                 y=train_batch["y"])
+            model.train_on_batch(x=train_batch["x"], y=train_batch["y"])
             step += 1
 
         ###############################

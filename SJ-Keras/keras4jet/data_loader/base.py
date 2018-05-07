@@ -39,7 +39,7 @@ class DataLoaderBase(object):
         else:
             self.get_data = self._get_data_with_extra
         self._start = 0
-        
+
     def __len__(self):
         return int(self.tree.GetEntries())
 
@@ -82,13 +82,10 @@ class DataLoaderBase(object):
                     return batch
                 else:
                     batch = self[slicing]
-                    
                     self._start = 0
                     end = end - len(self)
-
                     batch1 = self[slice(self._start, end)]
                     self._start = end
-                    
                     batch = {key: np.append(batch[key], batch1[key], axis=0) for key in self.keys}
                     return batch
             else:
@@ -110,8 +107,7 @@ class DataLoaderBase(object):
 
     def __iter__(self):
         for start in xrange(0, len(self), self.batch_size): 
-            yield self[slice(start, start+self.batch_size)]
-
+            yield self[slice(start, start + self.batch_size)]
 
 
 class SeqDataLoaderBase(DataLoaderBase):

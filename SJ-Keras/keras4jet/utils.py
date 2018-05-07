@@ -169,3 +169,15 @@ def get_dataset_paths(dpath, data="dijet"):
 
 def get_size_of_model(model):
     return sum([np.prod(K.get_value(w).shape) for w in model.trainable_weights])
+
+
+def get_filename(path):
+    return os.path.splitext(os.path.split(path)[-1])[0]
+
+
+def convert_str_to_number(string):
+    float_case = float(string)
+    int_case = int(float_case)
+    output = int_case if float_case == int_case else float_case
+    return output
+

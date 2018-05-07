@@ -4,7 +4,7 @@ from __future__ import print_function
 
 import os
 import sys
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 import argparse
 from datetime import datetime
 import matplotlib as mpl
@@ -18,7 +18,7 @@ import tensorflow as tf
 
 sys.path.append("..")
 from keras4jet.models import get_custom_objects
-from keras4jet.data_loader import AK4Loader
+from keras4jet.data_loader import ImageSetLoader
 from keras4jet.metrics_wrapper import roc_auc_score
 from keras4jet.meters import OutHist
 from keras4jet.meters import ROCMeter
@@ -53,23 +53,25 @@ def evaluate(saved_model_path,
     ##########################
     # training data
     ###########################
-    train_loader = AK4Loader(
+    train_loader = ImageSetLoader(
         path=config.training_set,
-        maxlen=config.maxlen,
+        x=config.x,
+        x_shape=config.x_shape,
         batch_size=1024,
         cyclic=False)
 
     for batch in train_loader:
-        y_pred = model.predict_on_batch([batch["x_daus"], batch["x_glob"]])
+        y_pred = model.predict_on_batch(batch["x"])
         out_hist.fill(dname="train", y_true=batch["y"], y_pred=y_pred)
 
 
     #############################
     # Test on dijet dataset
     ########################
-    dijet_loader = AK4Loader(
+    dijet_loader = ImageSetLoader(
         path=config.dijet_test_set,
-        maxlen=config.maxlen,
+        x=config.x,
+        x_shape=config.x_shape,
         extra=["pt", "eta"],
         batch_size=1024,
         cyclic=False)
@@ -92,7 +94,7 @@ def evaluate(saved_model_path,
         out_dir=heatmap_subdir)
 
     for batch in dijet_loader:
-        y_pred = model.predict_on_batch([batch["x_daus"], batch["x_glob"]])
+        y_pred = model.predict_on_batch(batch["x"])
         roc_dijet.append(y_true=batch["y"], y_pred=y_pred)
         out_hist.fill(dname="test_dijet", y_true=batch["y"], y_pred=y_pred)
         heatmap.fill(y_true=batch["y"], y_pred=y_pred, pt=batch["pt"], eta=batch["eta"])
@@ -103,9 +105,10 @@ def evaluate(saved_model_path,
     ##################################
     # Test on Z+jet dataset
     ###################################
-    test_zjet_loader = AK4Loader(
+    test_zjet_loader = ImageSetLoader(
         path=config.zjet_test_set,
-        maxlen=config.maxlen,
+        x=config.x,
+        x_shape=config.x_shape,
         batch_size=1024,
         cyclic=False)
 
@@ -116,7 +119,7 @@ def evaluate(saved_model_path,
         prefix="zjet_")
 
     for batch in test_zjet_loader:
-        y_pred = model.predict_on_batch([batch["x_daus"], batch["x_glob"]])
+        y_pred = model.predict_on_batch(batch["x"])
         roc_zjet.append(y_true=batch["y"], y_pred=y_pred)
         out_hist.fill("test_zjet", y_true=batch["y"], y_pred=y_pred)
 
