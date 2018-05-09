@@ -26,6 +26,9 @@ from keras4jet.utils import get_log_dir
 from keras4jet.utils import Config
 from keras4jet.utils import get_available_gpus
 from keras4jet.utils import get_saved_model_paths
+from keras4jet.eval_utils import find_good_models
+from keras4jet.eval_utils import parse_model_path
+
 
 
 def evaluate(saved_model_path,
@@ -127,25 +130,13 @@ def evaluate(saved_model_path,
 
     out_hist.finish()
 
-
 def evaluate_all(log_dir):
     if isinstance(log_dir, str):
         log_dir = get_log_dir(log_dir, creation=False)
 
-    path_and_step = get_saved_model_paths(log_dir.saved_models.path)
-    for i, (saved_model_path, step) in enumerate(path_and_step):
-        print("\n\n\n[{i}/{total}]: {path}".format(
-            i=i, total=len(path_and_step), path=saved_model_path))
-        evaluate(
-            saved_model_path,
-            step,
-            log_dir)
+    good_models = find_good_models(log_dir)
+    for i, path in enumerate(good_models):
+        step = parse_model_path(path)["step"]
+        evaluate(path, step, log_dir)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--log_dir', type=str, required=True,
-    	help='the directory path of dataset')
-    args = parser.parse_args()
-    log_dir = get_log_dir(path=args.log_dir, creation=False)
-    evaluate_all(log_dir)
+

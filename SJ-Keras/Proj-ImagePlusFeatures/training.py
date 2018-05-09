@@ -59,7 +59,6 @@ def train():
 
     # Project parameters
     parser.add_argument("--kernel_size", type=int, default=5)
-    
     parser.add_argument("--features", nargs="+", default=["axis1", "axis2", "cmult", "nmult", "ptD"])
 
     args = parser.parse_args()
@@ -123,15 +122,16 @@ def train():
     #################################
     config["model_type"] = "hybrid"
 
-    config["dense_units_list"] = [32, 64, 64, 128]
+    config["units_list"] = [32, 64, 128]
+    config["filters_list"] = [32, 64, 64, 128]
 
     _model = build_a_model(
         model_type=config.model_type,
         model_name=config.model,
         image_shape=config.image_shape,
         num_features=len(config.features),
-        units_list=[32, 64, 128],
-        filters_list=[64, 64, 128, 128],
+        units_list=config.units_list,
+        filters_list=config.filters_list,
         kernel_size=config.kernel_size,
         padding="SAME")
 
@@ -170,14 +170,10 @@ def train():
         print("Epoch [{epoch}/{num_epochs}]".format(
             epoch=(epoch+1), num_epochs=config.num_epochs))
 
-        # FIXME
-        val_loss_accum = 0.0
-        num_val_steps = 0
-
         for train_batch in train_loader:
 
             # Validate model
-            if step % config.val_freq == 0:
+            if step % config.val_freq == 0 or step % config.save_freq == 0:
                 val_dj_batch = val_dijet_loader.next()
                 val_zj_batch = val_zjet_loader.next()
 
@@ -193,9 +189,7 @@ def train():
                     x=[val_zj_batch["image"], val_zj_batch["features"]],
                     y=val_zj_batch["y"])
 
-                # FIXME
-                val_loss_accum += dijet_loss
-                num_val_steps += 1
+                lr_scheduler.monitor(metrics=dijet_loss)
 
                 print("Step [{step}/{total_step}]".format(
                     step=step, total_step=total_step))
@@ -225,7 +219,8 @@ def train():
             if (step != 0) and (step % config.save_freq == 0):
                 filepath = os.path.join(
                     log_dir.saved_models.path,
-                    "{name}_{step}.h5".format(name="model", step=step))
+                    "model_step-{step:06d}_loss-{loss:.3f}_acc-{acc:.3f}.h5".format(
+                        step=step, loss=dijet_loss, acc=dijet_acc))
                 _model.save(filepath)
 
             # Train on batch
@@ -235,12 +230,11 @@ def train():
             step += 1
 
         # FIXME
-        avg_val_loss = val_loss_accum / num_val_steps
-        lr_scheduler.step(metrics=avg_val_loss, epoch=epoch)
+        lr_scheduler.step(epoch=epoch)
 
     filepath = os.path.join(log_dir.saved_models.path, "model_final.h5")
-
     _model.save(filepath)
+
     print("Training is over! :D")
 
     meter.add_plot(
