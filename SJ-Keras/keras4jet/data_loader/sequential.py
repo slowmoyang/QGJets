@@ -51,7 +51,7 @@ class AK4Loader(SeqDataLoaderBase):
         x_daus = x_daus.T
 
         #
-        pt_ordering = np.argsort(dau_pt)
+        pt_ordering = np.argsort(dau_pt)[::-1]
         example["x_daus"] = x_daus[pt_ordering]
 
         # x_glob: global input features
