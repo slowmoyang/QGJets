@@ -33,10 +33,10 @@ def dense_block(units, node_order=["dense", "bn", "activation"], **kargs):
     drop_rate = 0.5 if not kargs.has_key("drop_rate") else kargs["drop_rate"]
 
     def _block(x):
-        node_order = [node.lower() for node in node_order]
+        node_order = [node.lower() for node in ["dense", "bn", "activation"]]
         for node in node_order:
             if node == "dense":
-                x = Dense(units, use_bias=use_bias)(x)
+                x = Dense(units, use_bias=False)(x)
             elif node in ["bn", "batch_norm", "batch_normalization", "batchnormalization"]:
                 x = BatchNormalization()(x)
             elif node == "activation":
@@ -69,7 +69,7 @@ def build_a_model(image_shape, # Conv
     h_conv = Conv2D(filters=filters_list[0], kernel_size=kernel_size, strides=2, padding=padding)(x_image)
     h_conv = Activation(activation)(h_conv)
 
-    for filters in filters_list[1:]:
+    for i, filters in enumerate(filters_list[1:]):
         h_conv = conv_block(filters, kernel_size, 1, padding, activation)(h_conv)
         if (i != 0) and (i % 2 == 0):
             h_conv = MaxPooling2D(2)(h_conv)
