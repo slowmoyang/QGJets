@@ -15,8 +15,8 @@ from keras4jet.utils import convert_str_to_number
 
 def parse_model_path(path):
     filename = get_filename(path)
-    name, step, loss, acc, auc = filename.split("_")
-    metadata = [each.split("-") for each in [step, loss, acc, auc]]
+    name, step, loss, acc = filename.split("_")
+    metadata = [each.split("-") for each in [step, loss, acc]]
     metadata = {key: convert_str_to_number(value) for key, value in metadata}
     metadata.update({"path": path})
     return metadata
