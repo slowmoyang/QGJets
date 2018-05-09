@@ -38,7 +38,7 @@ def train():
 
     parser.add_argument("--train_sample", default="dijet", type=str)
     parser.add_argument("--datasets_dir",
-                        default="../../Data/root_100_500/3-JetImage/Shuffled",
+                        default="/scatch/slowmoyang/QGJets/root_100_200/3-JetImage",
                         type=str)
     parser.add_argument("--model", default="image_plus_features", type=str)
 
