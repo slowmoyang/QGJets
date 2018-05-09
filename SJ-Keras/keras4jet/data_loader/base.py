@@ -127,16 +127,7 @@ class SeqDataLoaderBase(DataLoaderBase):
 
         self.y = y
 
-        max_n_dau = int(self.tree.GetMaximum("n_dau"))
-        if maxlen is None:
-            self.maxlen = max_n_dau
-        elif isinstance(maxlen, int) and maxlen > 0:
-            self.maxlen = maxlen
-            if maxlen > max_n_dau:
-                warnings.warn("maxlen({}) is larger than max 'n_dau' ({}) in data".format(
-                    maxlen, max_n_dau))
-        else:
-            raise ValueError("maxlen")
+        self.maxlen = self.eval_maxlen(maxlen)
 
     def _get_data(self, idx): 
         raise NotImplementedError("")
@@ -179,5 +170,32 @@ class SeqDataLoaderBase(DataLoaderBase):
         else:
             raise TypeError
 
+    def eval_maxlen(self, maxlen):
+        if isinstance(maxlen, int) and maxlen > 0:
+            max_n_dau = int(self.tree.GetMaximum("n_dau"))
+            if maxlen > max_n_dau:
+                warnings.warn("maxlen({}) is larger than max 'n_dau' ({}) in data".format(
+                    maxlen, max_n_dau))
+            output = maxlen
+        elif isinstance(maxlen, str):
+            n_dau = np.array([each.n_dau for each in self.tree])
+            maxlen = maxlen.lower()
+            if maxlen == "max":
+                output = n_dau.max()
+            elif maxlen == "mean":
+                output = int(n_dau.mean())
+            elif maxlen == "median":
+                output = np.median(n_dau)
+            else:
+                raise ValueError
+        elif isinstance(maxlen, float) and maxlen > 0 and maxlen < 1:
+            n_dau = np.array(n_dau, dtype=np.int64)
+            n_dau.sort()
+            idx = int(len(n_dau)*maxlen)
+            output = n_dau[idx]
+        elif maxlen is None:
+            output = int(self.tree.GetMaximum("n_dau"))
+        else:
+            raise ValueError
 
-
+        return int(output)

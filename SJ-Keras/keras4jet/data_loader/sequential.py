@@ -46,8 +46,7 @@ class AK4Loader(SeqDataLoaderBase):
             dau_deta,
             dau_dphi,
             dau_charge,
-            is_neutral
-        ))
+            is_neutral))
         x_daus = x_daus.T
 
         #
@@ -67,3 +66,8 @@ class AK4Loader(SeqDataLoaderBase):
 
         return example
 
+    def get_shape(self, batch_shape=False):
+        shapes = [self[0][each].shape for each in ["x_daus", "x_glob"]] 
+        if batch_shape:
+            shapes = [tuple([None] + list(each)) for each in shapes]
+        return shapes
