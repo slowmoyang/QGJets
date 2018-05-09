@@ -8,17 +8,9 @@ import pandas as pd
 
 from keras4jet.utils import get_log_dir
 from keras4jet.utils import Directory
+from keras4jet.utils import get_filename
+from keras4jet.utils import convert_str_to_number
 
-
-def get_filename(path):
-    return os.path.splitext(os.path.split(path)[-1])[0]
-
-
-def convert_str_to_number(string):
-    float_case = float(string)
-    int_case = int(float_case)
-    output = int_case if float_case == int_case else float_case
-    return output
 
 
 def parse_model_path(path):
@@ -30,17 +22,29 @@ def parse_model_path(path):
     return metadata
 
 
-def find_good_models(log_dir):
+def find_good_models(log_dir,
+                     lower_better=["loss"],
+                     higher_better=["acc"],
+                     parsing_fn=parse_model_path):
+    """
+    min_objs
+    
+    """
     if isinstance(log_dir, str):
         log_dir = get_log_dir(log_dir, creation=False)
-    
+    if isinstance(lower_better, str):
+        lower_better = [lower_better, ]
+    if isinstance(higher_better, str):
+        higher_better = [higher_better, ]
+   
     saved_models = log_dir.saved_models.get_entries()
-    metadata = [parse_model_path(each) for each in saved_models if not "final" in each]
+    metadata = [parsing_fn(each) for each in saved_models if not "final" in each]
     metadata = pd.DataFrame(metadata)
 
     good = []
-    good += list(metadata[metadata["loss"] == metadata["loss"].min()]["path"].values)
-    good += list(metadata[metadata["acc"] == metadata["acc"].max()]["path"].values)
-    good += list(metadata[metadata["auc"] == metadata["auc"].max()]["path"].values)
+    for each in lower_better:
+        good += list(metadata[metadata[each] == metadata[each].min()]["path"].values)
+    for each in higher_better:
+        good += list(metadata[metadata[each] == metadata[each].max()]["path"].values)
     good = list(set(good))
     return good
