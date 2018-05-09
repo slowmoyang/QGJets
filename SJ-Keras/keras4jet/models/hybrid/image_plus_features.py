@@ -20,32 +20,32 @@ from keras.layers import GlobalAveragePooling2D
 import numpy as np
 import tensorflow as tf
 
-def conv_block(filters, kernel_size, strides, padding, activation):
-    def _block(x):
-        out = BatchNormalization()(x)
-        out = Conv2D(filters=filters, kernel_size=kernel_size, strides=strides, padding=padding)(out)
-        out = Activation(activation)(out)
-        return out
-    return _block
+def conv_block(x, filters, kernel_size, strides, padding, activation):
+    out = BatchNormalization()(x)
+    out = Conv2D(filters=filters, kernel_size=kernel_size, strides=strides, padding=padding)(out)
+    out = Activation(activation)(out)
+    return out
 
-def dense_block(units, node_order=["dense", "bn", "activation"], **kargs):
-    activation = "relu" if not kargs.has_key("activation") else kargs["activation"]
-    drop_rate = 0.5 if not kargs.has_key("drop_rate") else kargs["drop_rate"]
 
-    def _block(x):
-        node_order = [node.lower() for node in ["dense", "bn", "activation"]]
-        for node in node_order:
-            if node == "dense":
-                x = Dense(units, use_bias=False)(x)
-            elif node in ["bn", "batch_norm", "batch_normalization", "batchnormalization"]:
-                x = BatchNormalization()(x)
-            elif node == "activation":
-                x = Activation(activation)(x)
-            elif node == "dropout":
-                x = Dropout(drop_rate)(x)
-        return x
+def dense_block(x,
+                units,
+                node_order=["dense", "bn", "activation"],
+                activation="relu",
+                drop_rate=0.5,
+                use_bias=False):
 
-    return _block
+    node_order = [node.lower() for node in node_order]
+    for node in node_order:
+        if node == "dense":
+            x = Dense(units, use_bias=use_bias)(x)
+        elif node in ["bn", "batch_norm", "batch_normalization", "batchnormalization"]:
+            x = BatchNormalization()(x)
+        elif node == "activation":
+            x = Activation(activation)(x)
+        elif node == "dropout":
+            x = Dropout(drop_rate)(x)
+    return x
+
 
 
 
@@ -60,8 +60,6 @@ def build_a_model(image_shape, # Conv
                   activation="relu",
                   padding="SAME"):
 
-
-
     #######################
     # CNN Stem
     ######################
@@ -70,7 +68,7 @@ def build_a_model(image_shape, # Conv
     h_conv = Activation(activation)(h_conv)
 
     for i, filters in enumerate(filters_list[1:]):
-        h_conv = conv_block(filters, kernel_size, 1, padding, activation)(h_conv)
+        h_conv = conv_block(h_conv, filters, kernel_size, 1, padding, activation)
         if (i != 0) and (i % 2 == 0):
             h_conv = MaxPooling2D(2)(h_conv)
 
@@ -83,13 +81,13 @@ def build_a_model(image_shape, # Conv
 
     h_dense = x_features
     for units in units_list:
-        h_dense = dense_block(units, activation, drop_rate=drop_rate)(h_dense)
+        h_dense = dense_block(h_dense, units, activation, drop_rate=drop_rate)
 
     ######################################
     # Merge 
     ##########################################
     h_concat = Concatenate()([h_conv, h_dense])
-    h_concat = dense_block(units=last_hidden_units, activation=activation)(h_concat)
+    h_concat = dense_block(h_concat, units=last_hidden_units, activation=activation)
 
     logits = Dense(units=num_classes)(h_concat)
     y_score = Activation("softmax")(logits)
@@ -99,4 +97,3 @@ def build_a_model(image_shape, # Conv
     model = Model(inputs=[x_image, x_features], outputs=y_score)
 
     return model
-
