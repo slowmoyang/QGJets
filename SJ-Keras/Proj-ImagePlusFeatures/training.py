@@ -99,6 +99,8 @@ def train():
 
     steps_per_epoch = int(len(train_loader) / train_loader.batch_size)
     total_step = config.num_epochs * steps_per_epoch
+    config["steps_per_epoch"] = steps_per_epoch
+    config["total_step"] = total_step
 
     val_dijet_loader = HybridIFLoader(
         path=config.dijet_validation_set,
@@ -122,8 +124,8 @@ def train():
     #################################
     config["model_type"] = "hybrid"
 
-    config["units_list"] = [32, 64, 128]
-    config["filters_list"] = [32, 64, 64, 128]
+    config["units_list"] = [16, 32, 64]
+    config["filters_list"] = [16, 32, 32, 64, 64]
 
     _model = build_a_model(
         model_type=config.model_type,
