@@ -6,7 +6,7 @@ from six.moves import xrange
 
 import sys
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import matplotlib as mpl
 mpl.use("Agg")
@@ -14,6 +14,7 @@ mpl.use("Agg")
 import argparse
 import numpy as np
 from datetime import datetime
+import time
 
 import keras
 import keras.backend as K
@@ -22,9 +23,11 @@ from keras import losses
 from keras import metrics
 from keras.utils import multi_gpu_model 
 
+import tensorflow as tf
+
 sys.path.append("..")
 from keras4jet.models import build_a_model
-from keras4jet.data_loader import ImageSetLoader
+from keras4jet.data_loader import ImageLoader
 from keras4jet.meters import Meter
 from keras4jet import train_utils
 from keras4jet.utils import get_log_dir
@@ -47,7 +50,7 @@ def train():
     parser.add_argument("--multi-gpu", default=False, action='store_true', dest='multi_gpu')
 
     # Hyperparameters
-    parser.add_argument("--num_epochs", default=5, type=int)
+    parser.add_argument("--num_epochs", default=50, type=int)
     parser.add_argument("--batch_size", default=512, type=int)
     parser.add_argument("--val_batch_size", default=512, type=int)
     parser.add_argument("--lr", default=0.001, type=float)
@@ -57,11 +60,15 @@ def train():
     parser.add_argument("--save_freq", type=int, default=500)
 
     # Project parameters
-    parser.add_argument("--kernel_size", type=int, default=3)
+    parser.add_argument("--kernel_size", type=int, default=5)
+    parser.add_argument("--x", nargs="+",
+        default=[
+          "image_chad_pt_33", "image_chad_mult_33",
+          "image_electron_pt_33", "image_electron_mult_33",
+          "image_muon_pt_33", "image_muon_mult_33",
+          "image_nhad_pt_33", "image_nhad_mult_33",
+          "image_photon_pt_33", "image_photon_mult_33"])
     
-
-
-
     args = parser.parse_args()
 
     # Log directory
@@ -81,16 +88,9 @@ def train():
     dataset_paths = get_dataset_paths(config.datasets_dir, config.train_sample)
     config.update(dataset_paths)
 
-    config["x"] = [
-        "image_chad_pt_33", "image_chad_mult_33",
-        "image_electron_pt_33", "image_electron_mult_33",
-        "image_muon_pt_33", "image_muon_mult_33",
-        "image_nhad_pt_33", "image_nhad_mult_33",
-        "image_photon_pt_33", "image_photon_mult_33"]
-
     config["x_shape"] = (len(config.x), 33, 33)
 
-    train_loader = ImageSetLoader(
+    train_loader = ImageLoader(
         path=config.training_set,
         x=config.x,
         x_shape=config.x_shape,
@@ -100,14 +100,14 @@ def train():
     steps_per_epoch = int(len(train_loader) / train_loader.batch_size)
     total_step = config.num_epochs * steps_per_epoch
 
-    val_dijet_loader = ImageSetLoader(
+    val_dijet_loader = ImageLoader(
         path=config.dijet_validation_set,
         x=config.x,
         x_shape=config.x_shape,
         batch_size=config.val_batch_size,
         cyclic=True)
 
-    val_zjet_loader = ImageSetLoader(
+    val_zjet_loader = ImageLoader(
         path=config.zjet_validation_set,
         x=config.x,
         x_shape=config.x_shape,
@@ -125,6 +125,7 @@ def train():
         model_name=config.model,
         input_shape=config.x_shape,
         kernel_size=config.kernel_size,
+        filters_list=[16, 32, 32, 64, 64],
         padding="SAME")
 
     if config.multi_gpu:
@@ -147,11 +148,10 @@ def train():
     #######################################
     # 
     ###########################################
-
     meter = Meter(
         name_list=["step", "lr",
-                   "train_loss", "dijet_loss", "zjet_loss",
-                    "train_acc", "dijet_acc", "zjet_acc"],
+           "train_loss", "dijet_loss", "zjet_loss",
+           "train_acc", "dijet_acc", "zjet_acc"],
         dpath=log_dir.validation.path)
 
     #######################################
@@ -159,75 +159,65 @@ def train():
     #######################################
     step = 0
     for epoch in range(config.num_epochs):
-        print("Epoch [{epoch}/{num_epochs}]".format(
-            epoch=(epoch+1), num_epochs=config.num_epochs))
-
-        # FIXME
-        val_loss_accum = 0.0
-        num_val_steps = 0
+        print("Epoch [{epoch}/{num_epochs}]".format(epoch=(epoch+1), num_epochs=config.num_epochs))
 
         for train_batch in train_loader:
-
-            # Validate model
-            if step % config.val_freq == 0:
+            # Validation
+            if step % config.val_freq == 0 or step % config.save_freq == 0:
                 val_dj_batch = val_dijet_loader.next()
                 val_zj_batch = val_zjet_loader.next()
 
-                train_loss, train_acc = model.test_on_batch(
-                    x=train_batch["x"], y=train_batch["y"])
+                train_loss, train_acc, train_auc = model.test_on_batch(
+                    x=train_batch["x"],
+                    y=train_batch["y"])
 
-                dijet_loss, dijet_acc = model.test_on_batch(
-                    x=val_dj_batch["x"], y=val_dj_batch["y"])
+                dijet_loss, dijet_acc, dijet_auc = model.test_on_batch(
+                    x=val_dj_batch["x"],
+                    y=val_dj_batch["y"])
 
-                zjet_loss, zjet_acc = model.test_on_batch(
-                    x=val_zj_batch["x"], y=val_zj_batch["y"])
+                zjet_loss, zjet_acc, zjet_auc = model.test_on_batch(
+                    x=val_zj_batch["x"],
+                    y=val_zj_batch["y"])
 
-                # FIXME
-                val_loss_accum += dijet_loss
-                num_val_steps += 1
+                lr_scheduler.monitor(metrics=dijet_loss)
 
                 print("Step [{step}/{total_step}]".format(
                     step=step, total_step=total_step))
-
-                print("  Training:")
-                print("    Loss {train_loss:.3f} | Acc. {train_acc:.3f}".format(
-                    train_loss=train_loss, train_acc=train_acc))
-
-                print("  Validation on Dijet")
-                print("    Loss {val_loss:.3f} | Acc. {val_acc:.3f}".format(
-                    val_loss=dijet_loss, val_acc=dijet_acc))
-
-                print("  Validation on Z+jet")
-                print("    Loss {val_loss:.3f} | Acc. {val_acc:.3f}".format(
-                    val_loss=zjet_loss, val_acc=zjet_acc))
+                print("  Training:\n\tLoss {:.3f} | Acc. {:.3f}".format(
+                    train_loss, train_acc))
+                print("  Validation on Dijet\n\tLoss {:.3f} | Acc. {:.3f}".format(
+                    dijet_loss, dijet_acc))
+                print("  Validation on Z+jet\n\tLoss {:.3f} | Acc. {:.3f}".format(
+                    zjet_loss,zjet_acc)
 
                 meter.append({
-                    "step": step,
-                    "lr": K.get_value(model.optimizer.lr),
-                    "train_loss": train_loss,
-                    "train_acc": train_acc,
-                    "dijet_loss": dijet_loss,
-                    "dijet_acc": dijet_acc,
-                    "zjet_loss": zjet_loss,
-                    "zjet_acc": zjet_acc})
+                    "step": step, "lr": K.get_value(model.optimizer.lr),
+                    "train_loss": train_loss, "dijet_loss": dijet_loss, "zjet_loss": zjet_loss,
+                    "train_acc": train_acc, "dijet_acc": dijet_acc, "zjet_acc": zjet_acc})
 
+            # Save model
             if (step != 0) and (step % config.save_freq == 0):
                 filepath = os.path.join(
                     log_dir.saved_models.path,
-                    "{name}_{step}.h5".format(name="model", step=step))
+                    "model_step-{step:06d}_loss-{loss:.3f}_acc-{acc:.3f}.h5".format(
+                        step=step, loss=dijet_loss, acc=dijet_acc))
                 _model.save(filepath)
 
             # Train on batch
             model.train_on_batch(x=train_batch["x"], y=train_batch["y"])
             step += 1
 
-        # FIXME
-        avg_val_loss = val_loss_accum / num_val_steps
-        lr_scheduler.step(metrics=avg_val_loss, epoch=epoch)
+        ###############################
+        # On Epoch End
+        ###########################
+        lr_scheduler.step(epoch=epoch)
 
+    #############################
+    #
+    #############################3
     filepath = os.path.join(log_dir.saved_models.path, "model_final.h5")
-
     _model.save(filepath)
+
     print("Training is over! :D")
 
     meter.add_plot(
