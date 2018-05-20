@@ -30,16 +30,14 @@ def block(filters, kernel_size, strides, padding, activation):
 def build_a_model(input_shape,
                   num_classes=2,
                   kernel_size=11,
-                  num_conv=3,
+                  filters_list=[16, 32, 32, 64, 64],
                   activation="relu",
                   padding="SAME"):
     inputs = Input(input_shape)
 
-    filters = 32
-    out = Conv2D(filters=filters, kernel_size=kernel_size, strides=2, padding=padding)(inputs)
+    out = Conv2D(filters=filters_list[0], kernel_size=kernel_size, strides=2, padding=padding)(inputs)
     out = Activation(activation)(out)
-    for i in range(num_conv-1):
-        filters *= 2
+    for i, filters in enumerate(filters_list[1:]):
         out = block(filters, kernel_size, 1, padding, "relu")(out)
         if (i != 0) and (i % 2 == 0):
             out = MaxPooling2D(2)(out)

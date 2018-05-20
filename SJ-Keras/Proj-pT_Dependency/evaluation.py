@@ -14,10 +14,9 @@ from keras.models import load_model
 from keras.utils import multi_gpu_model 
 import tensorflow as tf
 
-
 sys.path.append("..")
 from keras4jet.models import get_custom_objects
-from keras4jet.data_loader import ImageSetLoader
+from keras4jet.data_loader import ImageLoader
 from keras4jet.meters import OutHist
 from keras4jet.meters import ROCMeter
 from keras4jet.heatmap import Heatmap
@@ -25,6 +24,10 @@ from keras4jet.utils import get_log_dir
 from keras4jet.utils import Config
 from keras4jet.utils import get_available_gpus
 from keras4jet.utils import get_saved_model_paths
+from keras4jet.utils import get_filename
+from keras4jet.eval_utils import find_good_models
+from keras4jet.eval_utils import parse_model_path
+
 
 
 def evaluate(saved_model_path,
@@ -37,8 +40,6 @@ def evaluate(saved_model_path,
 
     model = load_model(saved_model_path, custom_objects=custom_objects)
 
-    #model = multi_gpu_model(model, 2)
-
     out_hist = OutHist(
         dpath=log_dir.output_histogram.path,
         step=step,
@@ -48,7 +49,7 @@ def evaluate(saved_model_path,
     ##########################
     # training data
     ###########################
-    train_loader = ImageSetLoader(
+    train_loader = ImageLoader(
         path=config.training_set,
         x=config.x,
         x_shape=config.x_shape,
@@ -63,7 +64,7 @@ def evaluate(saved_model_path,
     #############################
     # Test on dijet dataset
     ########################
-    dijet_loader = ImageSetLoader(
+    dijet_loader = ImageLoader(
         path=config.dijet_test_set,
         x=config.x,
         x_shape=config.x_shape,
@@ -100,7 +101,7 @@ def evaluate(saved_model_path,
     ##################################
     # Test on Z+jet dataset
     ###################################
-    test_zjet_loader = ImageSetLoader(
+    test_zjet_loader = ImageLoader(
         path=config.zjet_test_set,
         x=config.x,
         x_shape=config.x_shape,
@@ -128,20 +129,8 @@ def evaluate_all(log_dir):
     if isinstance(log_dir, str):
         log_dir = get_log_dir(log_dir, creation=False)
 
-    path_and_step = get_saved_model_paths(log_dir.saved_models.path)
-    for i, (saved_model_path, step) in enumerate(path_and_step):
-        print("\n\n\n[{i}/{total}]: {path}".format(
-            i=i, total=len(path_and_step), path=saved_model_path))
-        evaluate(
-            saved_model_path,
-            step,
-            log_dir)
+    good_models = find_good_models(log_dir)
+    for i, path in enumerate(good_models):
+        step = parse_model_path(path)["step"]
+        evaluate(path, step, log_dir)
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        '--log_dir', type=str, required=True,
-    	help='the directory path of dataset')
-    args = parser.parse_args()
-    log_dir = get_log_dir(path=args.log_dir, creation=False)
-    evaluate_all(log_dir)
