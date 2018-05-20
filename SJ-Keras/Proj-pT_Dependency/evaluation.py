@@ -4,7 +4,6 @@ from __future__ import print_function
 
 import os
 import sys
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
 import argparse
 from datetime import datetime
 import matplotlib as mpl
