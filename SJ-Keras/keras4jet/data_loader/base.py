@@ -12,7 +12,7 @@ import warnings
 
 # TODO rearrange args
 
-class DataLoaderBase(object):
+class BaseDataLoader(object):
     def __init__(self,
                  path,
                  example_list,
@@ -110,7 +110,7 @@ class DataLoaderBase(object):
             yield self[slice(start, start + self.batch_size)]
 
 
-class SeqDataLoaderBase(DataLoaderBase):
+class SeqBaseDataLoader(BaseDataLoader):
     def __init__(self,
                  path,
                  example_list,
@@ -122,7 +122,7 @@ class SeqDataLoaderBase(DataLoaderBase):
                  num_classes,
                  tree_name):
 
-        super(SeqDataLoaderBase, self).__init__(
+        super(SeqBaseDataLoader, self).__init__(
             path, example_list, extra, num_classes, batch_size, cyclic, tree_name)
 
         self.y = y

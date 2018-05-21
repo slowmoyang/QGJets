@@ -7,10 +7,10 @@ import numpy as np
 
 import warnings
 
-from .base import DataLoaderBase
+from .base import BaseDataLoader
 
 
-class ImageLoader(DataLoaderBase):
+class ImageLoader(BaseDataLoader):
     __slots__ = ("root_file", "tree", "path", "example_list", "extra",
                  "num_classes", "batch_size", "cyclic", "tree_name",
                  "keys", "get_data", "_start", "x", "x_shape", "y")
