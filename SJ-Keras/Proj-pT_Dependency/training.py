@@ -34,6 +34,7 @@ from keras4jet.utils import get_log_dir
 from keras4jet.utils import Config
 from keras4jet.utils import get_available_gpus
 from keras4jet.utils import get_dataset_paths
+from keras4jet.exper_config import C10
 
 def train():
     parser = argparse.ArgumentParser()
@@ -42,7 +43,7 @@ def train():
     parser.add_argument("--datasets_dir",
                         default="../../Data/root_100_500/3-JetImage/Shuffled",
                         type=str)
-    parser.add_argument("--model", default="large_filter", type=str)
+    parser.add_argument("--model", default="convnet", type=str)
 
 
     parser.add_argument("--log_dir", default="./logs/{name}", type=str)
@@ -61,13 +62,7 @@ def train():
 
     # Project parameters
     parser.add_argument("--kernel_size", type=int, default=5)
-    parser.add_argument("--x", nargs="+",
-        default=[
-          "image_chad_pt_33", "image_chad_mult_33",
-          "image_electron_pt_33", "image_electron_mult_33",
-          "image_muon_pt_33", "image_muon_mult_33",
-          "image_nhad_pt_33", "image_nhad_mult_33",
-          "image_photon_pt_33", "image_photon_mult_33"])
+    parser.add_argument("--x", nargs="+", default=C10)
     
     args = parser.parse_args()
 
@@ -125,7 +120,7 @@ def train():
         model_name=config.model,
         input_shape=config.x_shape,
         kernel_size=config.kernel_size,
-        filters_list=[16, 32, 32, 64, 64],
+        filters_list=[32, 64, 64, 128],
         padding="SAME")
 
     if config.multi_gpu:
@@ -167,15 +162,15 @@ def train():
                 val_dj_batch = val_dijet_loader.next()
                 val_zj_batch = val_zjet_loader.next()
 
-                train_loss, train_acc, train_auc = model.test_on_batch(
+                train_loss, train_acc = model.test_on_batch(
                     x=train_batch["x"],
                     y=train_batch["y"])
 
-                dijet_loss, dijet_acc, dijet_auc = model.test_on_batch(
+                dijet_loss, dijet_acc = model.test_on_batch(
                     x=val_dj_batch["x"],
                     y=val_dj_batch["y"])
 
-                zjet_loss, zjet_acc, zjet_auc = model.test_on_batch(
+                zjet_loss, zjet_acc = model.test_on_batch(
                     x=val_zj_batch["x"],
                     y=val_zj_batch["y"])
 
@@ -188,7 +183,7 @@ def train():
                 print("  Validation on Dijet\n\tLoss {:.3f} | Acc. {:.3f}".format(
                     dijet_loss, dijet_acc))
                 print("  Validation on Z+jet\n\tLoss {:.3f} | Acc. {:.3f}".format(
-                    zjet_loss,zjet_acc)
+                    zjet_loss,zjet_acc))
 
                 meter.append({
                     "step": step, "lr": K.get_value(model.optimizer.lr),
