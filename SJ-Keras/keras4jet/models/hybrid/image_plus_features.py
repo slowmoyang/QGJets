@@ -45,7 +45,12 @@ def build_a_model(image_shape, # Conv
     h_conv = Activation(activation)(h_conv)
 
     for i, filters in enumerate(filters_list[1:]):
-        h_conv = conv_block(h_conv, filters, kernel_size, 1, padding, activation)
+        h_conv = conv_block(x=h_conv,
+                            filters=filters,
+                            kernel_size=kernel_size,
+                            strides=1,
+                            padding=padding,
+                            activation=activation)
         if (i != 0) and (i % 2 == 0):
             h_conv = MaxPooling2D(2)(h_conv)
 
@@ -58,7 +63,7 @@ def build_a_model(image_shape, # Conv
 
     h_dense = x_features
     for units in units_list:
-        h_dense = dense_block(h_dense, units, activation, drop_rate=drop_rate)
+        h_dense = dense_block(h_dense, units=units, activation=activation, rate=rate)
 
     ######################################
     # Merge 
