@@ -1,10 +1,21 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import imp
+
 from keras.layers.core import Lambda
 from keras.models import Sequential
 import keras.backend as K
 import keras
 import tensorflow as tf
 import numpy as np
-import cv2
+
+try:
+    imp.find_module("cv2")
+    _CV2_EXISTS = True
+except ImportError:
+    _CV2_EXISTS = False
 
 
 def target_category_loss(x, category_index, num_classes):
@@ -20,6 +31,9 @@ def get_grad_cam(model, image_batch, layer_name=None, num_classes=2, mode="posit
     """
     Add Grad-CAM graph
     """
+    if not _CV2_EXIST:
+        raise ImportError("")
+
     prediction = model.predict(image_batch)[0]
     predicted_class = np.argmax(prediction)
 
