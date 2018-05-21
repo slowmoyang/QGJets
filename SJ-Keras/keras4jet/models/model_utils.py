@@ -26,7 +26,7 @@ def get_channel_axis():
 
 def dense_block(x,
                 units,
-                order=["dense", "act", "bn"],
+                layer_order=["dense", "act", "bn"],
                 activation="relu",
                 rate=0.5):
 
@@ -46,6 +46,7 @@ def dense_block(x,
             x = Dropout(rate=rate)(x)
         else:
             raise ValueError
+    return x
 
 def conv_block(x,
                filters,
