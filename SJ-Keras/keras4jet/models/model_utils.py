@@ -28,7 +28,8 @@ def dense_block(x,
                 units,
                 layer_order=["dense", "act", "bn"],
                 activation="relu",
-                rate=0.5):
+                rate=0.5,
+                use_bias=True):
 
     layer_order = [each.lower().replace(" ", "_") for each in layer_order]
     if use_bias is None:
