@@ -36,7 +36,7 @@ def dense_block(x,
         has_bn = bool(_BN_NAME_SET.intersection(layer_order))
         use_bias = False if has_bn else True
         
-    for layer in order:
+    for layer in layer_order:
         if layer in _DENSE_NAME_SET:
             x = Dense(units, activation=None, use_bias=use_bias)(x)
         elif layer in _ACT_NAME_SET:
