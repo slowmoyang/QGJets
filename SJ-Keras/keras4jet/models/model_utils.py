@@ -40,7 +40,7 @@ def dense_block(x,
         if layer in _DENSE_NAME_SET:
             x = Dense(units, activation=None, use_bias=use_bias)(x)
         elif layer in _ACT_NAME_SET:
-            x = Activation(activation)
+            x = Activation(activation)(x)
         elif layer in _BN_NAME_SET:
             x = BatchNormalization(axis=-1)(x)
         elif layer in _DROPOUT_NAME_SET:
