@@ -1,12 +1,15 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
 from six.moves import xrange
 
+from ..model_utils import get_channel_axis
+from ..model_utils import conv_block
+from ..model_utils import dense_block
+
 from keras import backend as K
-
 from keras.models import Model
-
 from keras.layers import Input
 from keras.layers import Activation
 from keras.layers import Conv2D
@@ -19,32 +22,6 @@ from keras.layers import GlobalAveragePooling2D
 
 import numpy as np
 import tensorflow as tf
-
-def conv_block(x, filters, kernel_size, strides, padding, activation):
-    out = BatchNormalization()(x)
-    out = Conv2D(filters=filters, kernel_size=kernel_size, strides=strides, padding=padding)(out)
-    out = Activation(activation)(out)
-    return out
-
-
-def dense_block(x,
-                units,
-                node_order=["dense", "bn", "activation"],
-                activation="relu",
-                drop_rate=0.5,
-                use_bias=False):
-
-    node_order = [node.lower() for node in node_order]
-    for node in node_order:
-        if node == "dense":
-            x = Dense(units, use_bias=use_bias)(x)
-        elif node in ["bn", "batch_norm", "batch_normalization", "batchnormalization"]:
-            x = BatchNormalization()(x)
-        elif node == "activation":
-            x = Activation(activation)(x)
-        elif node == "dropout":
-            x = Dropout(drop_rate)(x)
-    return x
 
 
 
