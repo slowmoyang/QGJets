@@ -33,7 +33,7 @@ def dense_block(x,
 
     layer_order = [each.lower().replace(" ", "_") for each in layer_order]
     if use_bias is None:
-        has_bn = bool(_BN_NAME_SET.intersection(order))
+        has_bn = bool(_BN_NAME_SET.intersection(layer_order))
         use_bias = False if has_bn else True
         
     for layer in order:
