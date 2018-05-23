@@ -63,7 +63,7 @@ def build_a_model(image_shape, # Conv
 
     h_dense = x_features
     for units in units_list:
-        h_dense = dense_block(h_dense, units=units, activation=activation, rate=rate)
+        h_dense = dense_block(h_dense, units=units, activation=activation, rate=drop_rate)
 
     ######################################
     # Merge 
