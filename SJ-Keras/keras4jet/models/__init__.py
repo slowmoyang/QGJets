@@ -4,6 +4,7 @@ import keras4jet.models.image
 import keras4jet.models.sequential
 import keras4jet.models.features
 import keras4jet.models.hybrid
+import keras4jet.models.model_utils
 
 __all__ = []
 
