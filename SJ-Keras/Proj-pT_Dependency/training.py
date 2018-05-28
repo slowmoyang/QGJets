@@ -6,7 +6,7 @@ from six.moves import xrange
 
 import sys
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import matplotlib as mpl
 mpl.use("Agg")
@@ -34,7 +34,7 @@ from keras4jet.utils import get_log_dir
 from keras4jet.utils import Config
 from keras4jet.utils import get_available_gpus
 from keras4jet.utils import get_dataset_paths
-from keras4jet.exper_config import C10
+from keras4jet import exper_config
 
 def train():
     parser = argparse.ArgumentParser()
@@ -62,7 +62,7 @@ def train():
 
     # Project parameters
     parser.add_argument("--kernel_size", type=int, default=5)
-    parser.add_argument("--x", nargs="+", default=C10)
+    parser.add_argument("--x", nargs="+", default=exper_config.C6)
     
     args = parser.parse_args()
 
