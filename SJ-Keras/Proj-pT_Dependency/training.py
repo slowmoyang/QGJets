@@ -62,7 +62,7 @@ def train():
 
     # Project parameters
     parser.add_argument("--kernel_size", type=int, default=5)
-    parser.add_argument("--x", nargs="+", default=exper_config.C6)
+    parser.add_argument("--channels", nargs="+", default="C10")
     
     args = parser.parse_args()
 
@@ -83,6 +83,7 @@ def train():
     dataset_paths = get_dataset_paths(config.datasets_dir, config.train_sample)
     config.update(dataset_paths)
 
+    config["x"] = exper_config.CHANNELS_DICT[config.channels]
     config["x_shape"] = (len(config.x), 33, 33)
 
     train_loader = ImageLoader(
