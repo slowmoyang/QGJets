@@ -9,13 +9,50 @@ from keras.preprocessing.sequence import pad_sequences
 
 import warnings
 
+from collections import OrderedDict
+#from collections import MutableMapping
+import time
+
 
 # TODO rearrange args
+
+class Batch(object):
+    def __init__(self, raw_batch, **kwargs):
+        self._raw_batch = raw_batch
+
+        for key, value in raw_batch.iteritems():
+            setattr(self, key, value)
+
+        for category, item_list in kwargs.iteritems():
+            items = [raw_batch[key] for key in item_list]
+            setattr(self, category, items)
+
+        self._keys = set(raw_batch.keys())
+
+
+    def __getitem__(self, key):
+        return self._raw_batch[key]
+
+    def __len__(self):
+        pass
+
+    def size(self):
+        raise NotImplementedError
+
+    def keys(self):
+        return self._keys
+
+    def iteritems(self):
+        return self._raw_batch.iteritems()
+        
+
+
 
 class BaseDataLoader(object):
     def __init__(self,
                  path,
-                 example_list,
+                 features_list,
+                 label,
                  extra,
                  num_classes,
                  batch_size,
@@ -26,15 +63,17 @@ class BaseDataLoader(object):
         self.tree = self.root_file.Get(tree_name)
 
         self.path = path
-        self.example_list = example_list
-        self.extra = extra
-        self.num_classes = num_classes
-        self.batch_size = batch_size
-        self.cyclic = cyclic
-        self.tree_name = tree_name
+        self._features_list = features_list
+        self._label = label
+        self._example_list = features_list + [label]
+        self._extra = extra
+        self._num_classes = num_classes
+        self._batch_size = batch_size
+        self._cyclic = cyclic
+        self._tree_name = tree_name
 
-        self.keys = example_list + extra
-        if len(self.extra) == 0:
+        self.keys = self._example_list + extra
+        if len(self._extra) == 0:
             self.get_data = self._get_data
         else:
             self.get_data = self._get_data_with_extra
@@ -48,7 +87,7 @@ class BaseDataLoader(object):
 
     def _get_data_with_extra(self, idx):
         example = self._get_data(idx)
-        for key in self.extra:
+        for key in self._extra:
             example[key] = getattr(self.tree, key)
         return example
 
@@ -72,9 +111,9 @@ class BaseDataLoader(object):
             raise TypeError
         
     def next(self):
-        if self.cyclic:
+        if self._cyclic:
             if self._start + 1 < len(self):
-                end = self._start + self.batch_size
+                end = self._start + self._batch_size
                 slicing = slice(self._start, end)
                 if end <= len(self):
                     self._start = end
@@ -87,6 +126,7 @@ class BaseDataLoader(object):
                     batch1 = self[slice(self._start, end)]
                     self._start = end
                     batch = {key: np.append(batch[key], batch1[key], axis=0) for key in self.keys}
+                    batch = Batch(batch, features=self._features_list, extra=self._extra)
                     return batch
             else:
                 self._start = 0
@@ -94,7 +134,7 @@ class BaseDataLoader(object):
                 return batch
         else:
             if self._start + 1 < len(self):
-                end = self._start + self.batch_size
+                end = self._start + self._batch_size
                 slicing = slice(self._start, end)
                 self._start = end
                 batch = self[slicing]
@@ -106,14 +146,28 @@ class BaseDataLoader(object):
         return self.next()
 
     def __iter__(self):
-        for start in xrange(0, len(self), self.batch_size): 
-            yield self[slice(start, start + self.batch_size)]
+        for start in xrange(0, len(self), self._batch_size): 
+            yield self[slice(start, start + self._batch_size)]
 
 
-class SeqBaseDataLoader(BaseDataLoader):
+    def check_batch_time(self, n=10):
+        elapsed_times = []
+        for _ in xrange(n):
+            start_time = time.time()
+            self.next()
+            elapsed_times.append(time.time() - start_time)
+        elapsed_times = np.array(elapsed_times)
+        print("[Elapsed time] mean: {mean:.5f} / stddev {stddev:5f}".format(
+            mean=elapsed_times.mean(),
+            stddev=elapsed_times.std()))
+        print("Batch Size: {}".format(self._batch_size))
+        print("Iteration: {}".format(n))
+
+
+class BaseSeqDataLoader(BaseDataLoader):
     def __init__(self,
                  path,
-                 example_list,
+                 features_list,
                  batch_size,
                  maxlen,
                  cyclic,
@@ -122,8 +176,8 @@ class SeqBaseDataLoader(BaseDataLoader):
                  num_classes,
                  tree_name):
 
-        super(SeqBaseDataLoader, self).__init__(
-            path, example_list, extra, num_classes, batch_size, cyclic, tree_name)
+        super(BaseSeqDataLoader, self).__init__(
+            path, features_list, y, extra, num_classes, batch_size, cyclic, tree_name)
 
         self.y = y
 
@@ -166,6 +220,7 @@ class SeqBaseDataLoader(BaseDataLoader):
                 truncating="pre",
                 value=0.)
             batch = {key: np.array(value) for key, value in batch.items()}
+            batch = Batch(batch, features=self._features_list, extra=self._extra)
             return batch
         else:
             raise TypeError
@@ -199,3 +254,64 @@ class SeqBaseDataLoader(BaseDataLoader):
             raise ValueError
 
         return int(output)
+
+
+
+class BaseMultiSeqLoader(BaseDataLoader):
+    def __init__(self,
+                 path,
+                 features_list,
+                 label,
+                 extra,
+                 seq_maxlen,
+                 batch_size,
+                 cyclic,
+                 num_classes,
+                 tree_name,
+                 padding,
+                 truncating):
+        super(BaseMultiSeqLoader, self).__init__(
+            path, features_list, label, extra, num_classes, batch_size, cyclic, tree_name)
+
+        self.seq_maxlen = OrderedDict(sorted(seq_maxlen.iteritems(), key=lambda item: self._example_list.index(item[0])))
+        self.padding = padding
+        self.truncating = truncating
+ 
+    def _get_data(self, idx): 
+        raise NotImplementedError("")
+        
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            if key < 0 or key >= len(self):
+                raise IndexError
+            example = self.get_data(key)
+            for key, maxlen in self.seq_maxlen.iteritems():
+                example[key] = np.expand_dims(example[key], axis=0)
+                example[key] = pad_sequences(
+                    sequences=example[key],
+                    maxlen=maxlen,
+                    dtype=np.float32,
+                    padding=self.padding,
+                    truncating=self.truncating,
+                    value=0.)
+                example[key] = example[key].reshape(example[key].shape[1:])
+            return example
+        elif isinstance(key, slice):
+            batch = {key: [] for key in self.keys}
+            for idx in xrange(*key.indices(len(self))):
+                example = self.get_data(idx)
+                for key in self.keys:
+                    batch[key].append(example[key])
+            for key, maxlen in self.seq_maxlen.iteritems():
+                batch[key] = pad_sequences(
+                    sequences=batch[key],
+                    maxlen=maxlen,
+                    dtype=np.float32,
+                    padding=self.padding,
+                    truncating=self.truncating,
+                    value=0.)
+            batch = {key: np.array(value) for key, value in batch.items()}
+            batch = Batch(batch, features=self._features_list, extra=self._extra)
+            return batch
+        else:
+            raise TypeError

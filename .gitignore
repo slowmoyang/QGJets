@@ -9,3 +9,5 @@
 *.so
 *.d
 *.pyc
+*/.ipynb_checkpoints
+*.ipynb
