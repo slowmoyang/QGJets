@@ -1,12 +1,12 @@
 from __future__ import absolute_import
 
-from . import models
-from . import layers
-from . import bayesian
-
-from . import losses
-from . import meters
-from . import heatmap
-from . import utils
-from . import train_utils
-from . import vis_utils
+from keras4jet import models
+from keras4jet import layers
+from keras4jet import bayesian
+from keras4jet import data
+from keras4jet import losses
+from keras4jet import meters
+from keras4jet import heatmap
+from keras4jet import utils
+from keras4jet import train_utils
+from keras4jet import vis_utils
