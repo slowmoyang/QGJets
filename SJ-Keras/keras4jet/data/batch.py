@@ -6,7 +6,7 @@ import numpy as np
 
 class Batch(object):
     def __init__(self, batch, **kwargs):
-
+        batch = {key: np.array(value) for key, value in batch.items()}
         for key, value in batch.iteritems():
             setattr(self, key, value)
 
