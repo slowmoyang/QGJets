@@ -4,18 +4,29 @@ from __future__ import print_function
 
 import numpy as np
 import ROOT
+from keras.preprocessing.sequence import pad_sequences
 
 from keras4jet.data.batch import Batch
 
 
 class BaseTreeDataset(object):
-    def __init__(self, path, tree_name, keys):
+    def __init__(self,
+                 path,
+                 tree_name,
+                 keys,
+                 seq_maxlen={},
+                 padding="post",
+                 truncating="post"):
         self._root_file = ROOT.TFile.Open(path, "READ")
         self._tree = self._root_file.Get(tree_name)
         self._keys = keys
 
         self._path = path
         self._tree_name = tree_name
+
+        self._seq_maxlen = seq_maxlen
+        self._padding = padding
+        self._truncating = truncating
 
     def __len__(self):
         return int(self._tree.GetEntries())
@@ -39,9 +50,16 @@ class BaseTreeDataset(object):
                 for key in self._keys:
                     batch[key].append(example[key])
 
-            batch = Batch({key: np.array(value) for key, value in batch.items()})
+            for key, maxlen in self._seq_maxlen.iteritems():
+                batch[key] = pad_sequences(
+                    sequences=batch[key],
+                    maxlen=maxlen,
+                    dtype=np.float32,
+                    padding=self._padding,
+                    truncating=self._truncating,
+                    value=0.0)
+
+            batch = Batch(batch)
             return batch
         else:
             raise TypeError
-
-
