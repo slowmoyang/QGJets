@@ -12,12 +12,25 @@ from keras4jet.data.dataset import BaseTreeDataset
 from keras4jet.data.data_iter import DataIterator
 
 
-class ParticleTypeOneHotDataset(BaseTreeDataset):
-    def __init__(self, path, seq_maxlen, tree_name="jetAnalyser"):
-        super(ParticleTypeOneHotDataset, self).__init__(
+class PTypeDataset(BaseTreeDataset):
+    def __init__(self, path, seq_maxlen, extra=None, tree_name="jetAnalyser"):
+        """
+        Arguments
+          - path: A str. A path to a root file.
+          - seq_maxlen: A dict.
+          - extra: A list of strings.
+          - tree_name: A str.
+        """
+        self._extra = extra
+        keys = ["x", "y"]
+        if extra is not None:
+            keys += extra
+            print(keys)
+
+        super(PTypeDataset, self).__init__(
             path=path,
             tree_name=tree_name,
-            keys=["x", "y"],
+            keys=keys,
             seq_maxlen=seq_maxlen)
 
     def _get_example(self, idx):
@@ -41,18 +54,19 @@ class ParticleTypeOneHotDataset(BaseTreeDataset):
         is_not_charged_hadron = (is_electron + is_muon + is_neutral_hadron + is_photon).astype(bool)
         is_charged_hadron = np.bitwise_not(is_not_charged_hadron)
 
-        x = np.hstack((
-            pt,
-            deta,
-            dphi,
-            charge,
-            is_neutral,
-            is_charged_hadron,
-            is_electron,
-            is_muon,
-            is_photon,
-            is_neutral_hadron,
-        ))
+        x = np.stack(
+            arrays=[
+                pt,
+                deta,
+                dphi,
+                charge,
+                is_neutral,
+                is_charged_hadron,
+                # is_electron,
+                # is_muon,
+                is_photon,
+                is_neutral_hadron],
+            axis=-1)
 
         # From highest to lowest 
         pt_order = np.argsort(pt)[::-1]
@@ -64,15 +78,31 @@ class ParticleTypeOneHotDataset(BaseTreeDataset):
             "x": x,
             "y": y
         }
+
+        if self._extra is not None:
+            extra = {each: getattr(self._tree, each) for each in self._extra}
+            example.update(extra)
         
         return example
 
+def get_data_iter(path, seq_maxlen, batch_size, cyclic=False):
+    dset = PTypeDataset(path=path, seq_maxlen=seq_maxlen)
+    data_iter = DataIterator(dset, batch_size=batch_size, cyclic=cyclic)
+    return data_iter
 
-if __name__ == "__main__":
+def _test():
     path = "/store/slowmoyang/QGJets/data/root_100_200/2-Refined/dijet_test_set.root"
-    dset = ParticleTypeOneHotDataset(path, seq_maxlen={"x": 30})
+    dset = PTypeDataset(path, seq_maxlen={"x": 30}, extra=["pt", "eta"])
     data_iter = DataIterator(dset, batch_size=128)
 
     batch = data_iter.next()
     for key, value in batch.iteritems():
         print(key, value.shape)
+
+    print(data_iter._dataset[:1]["x"].shape[1:])
+
+    print(data_iter.get_shape("x", False))
+    print(data_iter.get_shape("x", True))
+
+if __name__ == "__main__":
+    _test()
