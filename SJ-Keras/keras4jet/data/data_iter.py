@@ -87,9 +87,19 @@ class DataIterator(object):
                 return batch
         else:
             self._start = 0
-            batch = self._next()
+            end = self._start + self._batch_size
+            batch = self[slice(self._start, end)]
+            self._start = end
             return batch
 
     def __iter__(self):
         self._start = 0
         return self
+
+    def get_shape(self, key, batch_shape=False):
+        shape = self._dataset[:1][key].shape[1:]
+        if batch_shape:
+            return (self._batch_size, ) + shape
+        else:
+            return shape
+        

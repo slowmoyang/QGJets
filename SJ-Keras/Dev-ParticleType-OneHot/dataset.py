@@ -24,23 +24,27 @@ class ParticleTypeOneHotDataset(BaseTreeDataset):
         self._tree.GetEntry(idx)
 
         # Constituents
-        p4 = np.array([[p[mu] for mu in range(4)] for p in self._tree.dau_p4], dtype=np.float32)
+        pt = np.array(self._tree.dau_pt, dtype=np.float32)
+        deta = np.array(self._tree.dau_deta, dtype=np.float32)
+        dphi = np.array(self._tree.dau_dphi, dtype=np.float32)
 
         charge = np.array(self._tree.dau_charge, dtype=np.float32)
         is_neutral = np.where(charge == 0, 1.0, 0.0).astype(np.float32)
 
         pid = np.array(self._tree.dau_pid, dtype=np.int64) 
 
-        is_electron = np.where(pid == 11, 1, 0) + np.where(pid == -11, -1, 0)
-        is_muon = np.where(pid == 13, 1, 0) + np.where(pid == -13, -1, 0)
+        is_electron = np.where(np.abs(pid) == 11, 1, 0)
+        is_muon = np.where(np.abs(pid) == 13, 1, 0)
         is_neutral_hadron = (pid == 0)
         is_photon = (pid == 22)
 
         is_not_charged_hadron = (is_electron + is_muon + is_neutral_hadron + is_photon).astype(bool)
         is_charged_hadron = np.bitwise_not(is_not_charged_hadron)
 
-
         x = np.hstack((
+            pt,
+            deta,
+            dphi,
             charge,
             is_neutral,
             is_charged_hadron,
@@ -51,8 +55,8 @@ class ParticleTypeOneHotDataset(BaseTreeDataset):
         ))
 
         # From highest to lowest 
-        energy_order = np.argsort(p4[:, -1])[::-1]
-        x = x[energy_order]
+        pt_order = np.argsort(pt)[::-1]
+        x = x[pt_order]
         
         y = 0 if self._tree.label == 1 else 1
 
