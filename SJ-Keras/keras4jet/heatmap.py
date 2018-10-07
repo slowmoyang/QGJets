@@ -41,8 +41,10 @@ class Heatmap(object):
 
 
     def fill(self, y_true, y_pred, pt, eta):
-        y_true = y_true[:, 1]
-        y_pred = np.where(y_pred[:, 1] > 0.5, 1, 0)
+        y_pred = y_pred.reshape(y_true.shape)
+
+        y_true = y_true
+        y_pred = np.where(y_pred > 0.5, 1, 0)
         correct = np.equal(y_true, y_pred) 
         for c, p, e in zip(correct, pt, eta):
             self.heatmap["total"].Fill(p, e)
@@ -57,7 +59,7 @@ class Heatmap(object):
             ROOT.gStyle.SetPaintTextFormat(".2f")
         ROOT.gStyle.SetOptStat(0)
         self.heatmap[name].Draw(self.cmap)
-        self.heatmap[name].GetXaxis().SetTitle("pT (GeV)")
+        self.heatmap[name].GetXaxis().SetTitle("p_{T} (GeV)")
         self.heatmap[name].GetYaxis().SetTitle("\eta")
         out_path = self.out_path_fmt.format(name=name, ext="png")
         can.SaveAs(out_path)

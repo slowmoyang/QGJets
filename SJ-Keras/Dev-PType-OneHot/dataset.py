@@ -25,7 +25,6 @@ class PTypeDataset(BaseTreeDataset):
         keys = ["x", "y"]
         if extra is not None:
             keys += extra
-            print(keys)
 
         super(PTypeDataset, self).__init__(
             path=path,
@@ -85,8 +84,8 @@ class PTypeDataset(BaseTreeDataset):
         
         return example
 
-def get_data_iter(path, seq_maxlen, batch_size, cyclic=False):
-    dset = PTypeDataset(path=path, seq_maxlen=seq_maxlen)
+def get_data_iter(path, seq_maxlen, batch_size, cyclic=False, extra=[]):
+    dset = PTypeDataset(path=path, seq_maxlen=seq_maxlen, extra=extra)
     data_iter = DataIterator(dset, batch_size=batch_size, cyclic=cyclic)
     return data_iter
 

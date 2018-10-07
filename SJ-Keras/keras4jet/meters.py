@@ -114,8 +114,8 @@ class ROCMeter(object):
     def append(self, y_true, y_pred):
         # self.y_true = np.r_[self.y_true, y_true]
         # self.y_pred = np.r_[self.y_pred, y_pred]
-        self.y_true = np.append(self.y_true, y_true[:,1])
-        self.y_pred = np.append(self.y_pred, y_pred[:, 1])
+        self.y_true = np.append(self.y_true, y_true)
+        self.y_pred = np.append(self.y_pred, y_pred)
 
 
     def compute_roc(self):
@@ -200,7 +200,7 @@ class OutHist(object):
         self.root_file.cd(dname)
 
     def fill(self, dname, y_true, y_pred):
-        for is_gluon, gluon_likeness in zip(y_true[:, 1], y_pred[:, 1]):
+        for is_gluon, gluon_likeness in zip(y_true, y_pred):
             if is_gluon:
                 self.hists[dname]["gluon"].Fill(gluon_likeness)
             else:

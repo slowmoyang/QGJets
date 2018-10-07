@@ -51,14 +51,14 @@ def evaluate(saved_model_path,
     # training data
     ###########################
     train_iter = get_data_iter(
-        path=config.training_set,
+        path=config.dijet_training_set,
         seq_maxlen=config.seq_maxlen,
         batch_size=1024,
         cyclic=False)
 
     for batch in train_iter:
-        y_pred = model.predict_on_batch(batch.features)
-        out_hist.fill(dname="train", y_true=batch.label, y_pred=y_pred)
+        y_pred = model.predict_on_batch(batch.x)
+        out_hist.fill(dname="train", y_true=batch.y, y_pred=y_pred)
 
     #############################
     # Test on dijet dataset
@@ -88,10 +88,11 @@ def evaluate(saved_model_path,
         out_dir=heatmap_subdir)
 
     for batch in dijet_iter:
-        y_pred = model.predict_on_batch(batch.features)
-        roc_dijet.append(y_true=batch.label, y_pred=y_pred)
-        out_hist.fill(dname="test_dijet", y_true=batch.label, y_pred=y_pred)
-        heatmap.fill(y_true=batch.label, y_pred=y_pred, pt=batch["pt"], eta=batch["eta"])
+        y_pred = model.predict_on_batch(batch.x)
+        roc_dijet.append(y_true=batch.y, y_pred=y_pred)
+        out_hist.fill(dname="test_dijet", y_true=batch.y, y_pred=y_pred)
+
+        heatmap.fill(y_true=batch.y, y_pred=y_pred, pt=batch["pt"], eta=batch["eta"])
 
     roc_dijet.finish()
     heatmap.finish()
@@ -112,9 +113,9 @@ def evaluate(saved_model_path,
         prefix="zjet_")
 
     for batch in zjet_iter:
-        y_pred = model.predict_on_batch(batch.features)
-        roc_zjet.append(y_true=batch.label, y_pred=y_pred)
-        out_hist.fill("test_zjet", y_true=batch.label, y_pred=y_pred)
+        y_pred = model.predict_on_batch(batch.x)
+        roc_zjet.append(y_true=batch.y, y_pred=y_pred)
+        out_hist.fill("test_zjet", y_true=batch.y, y_pred=y_pred)
 
     roc_zjet.finish()
     out_hist.finish()
@@ -129,3 +130,8 @@ def evaluate_all(log_dir):
         step = parse_model_path(path)["step"]
         evaluate(path, step, log_dir)
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--log_dir", default="./logs/{name}", type=str)
+    args = parser.parse_args()
+    evaluate_all(args.log_dir)

@@ -144,29 +144,12 @@ def get_available_gpus():
     return [x.name for x in local_device_protos if x.device_type == 'GPU']
 
 
-def get_dataset_paths(dpath, event=None):
-    if event is None:
-        pass
-    elif isinstance(event, str):
-        event = event.lower()
-
-        if event in {"dijet", "dijet_set", "dj"}:
-            dpath = os.path.join(dpath, "dijet_set")
-        elif event in {"zjet", "zjet_set", "zj", "z+jet", "z+jet_set"}:
-            dpath = os.path.join(dpath, "zjet_set")
-        else:
-            raise ValueError("")
-
+def get_dataset_paths(dpath):
     entries = os.listdir(dpath)
     datasets = {}
     for each in entries:
-        key = os.path.splitext(each)[0]
+        key, _ = os.path.splitext(each)
         datasets[key] = os.path.join(dpath, each)
-
-    for key in datasets:
-        if "train" in key:
-            datasets["training_set"] = datasets.pop(key)
-            break
 
     return datasets
 

@@ -47,8 +47,8 @@ def train():
     parser.add_argument("--multi-gpu", default=False, action='store_true', dest='multi_gpu')
 
     # Hyperparameters
-    parser.add_argument("--num_epochs", default=100, type=int)
-    parser.add_argument("--batch_size", default=64, type=int)
+    parser.add_argument("--num_epochs", default=10, type=int)
+    parser.add_argument("--batch_size", default=128, type=int)
     parser.add_argument("--valid_batch_size", default=1024, type=int)
     parser.add_argument("--lr", default=0.001, type=float)
 
@@ -75,6 +75,8 @@ def train():
     config.update(args)
 
     dataset_paths = get_dataset_paths(config.datasets_dir)
+    for key, value in dataset_paths.iteritems():
+        print("{}: {}".format(key, value))
     config.update(dataset_paths)
 
     ########################################
@@ -83,7 +85,7 @@ def train():
     config["seq_maxlen"] = {"x": 40}
 
     train_iter = get_data_iter(
-        path=config.training_set,
+        path=config.dijet_training_set,
         seq_maxlen=config.seq_maxlen,
         batch_size=config.batch_size)
 
