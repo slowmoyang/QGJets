@@ -14,18 +14,26 @@ class DataIterator(object):
     def __init__(self,
                  dataset,
                  batch_size=1,
-                 cyclic=False):
+                 cyclic=False,
+                 shuffle=False):
 
         self._dataset = dataset
         self._batch_size = batch_size
         self._cyclic = cyclic
+        self._shuffle = shuffle
+
+
+        self._num_examples = len(self._dataset)
 
         if cyclic:
             self._next = self._cyclic_next
         else:
-            self._next = self._non_cyclic_next
+            if shuffle:
+                self._indices = self._get_shuffled_indices()
+                self._next = self._non_cyclic_shuffle_next
+            else:
+                self._next = self._non_cyclic_next
 
-        self._num_examples = len(self._dataset)
 
         self._start = 0
 
@@ -68,6 +76,17 @@ class DataIterator(object):
         batch = self[slicing]
         return batch
 
+    def _non_cyclic_shuffle_next(self):
+        if self._start + 1 >= self._num_examples:
+            raise StopIteration
+
+        end = self._start + self._batch_size
+        slicing = [self._indices.pop() for _ in range(self._start, end)]
+        self._start = end
+
+        batch = self[slicing]
+        return batch
+
     def _cyclic_next(self):
         if self._start + 1 < len(self):
             end = self._start + self._batch_size
@@ -94,7 +113,14 @@ class DataIterator(object):
 
     def __iter__(self):
         self._start = 0
+        self._indices = self._get_shuffled_indices()
         return self
+
+    def _get_shuffled_indices(self):
+        indices = np.arange(self._num_examples)
+        np.random.shuffle(indices)
+        indices = list(indices)
+        return indices
 
     def get_shape(self, key, batch_shape=False):
         shape = self._dataset[:1][key].shape[1:]

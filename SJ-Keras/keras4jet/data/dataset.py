@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 import numpy as np
 import ROOT
 from keras.preprocessing.sequence import pad_sequences
@@ -41,25 +43,35 @@ class BaseTreeDataset(object):
                 raise IndexError
             return self._get_example(key)
         elif isinstance(key, slice):
-
             batch = {each: [] for each in self._keys}
-
             for idx in range(*key.indices(len(self))):
                 example = self._get_example(idx)
-
                 for key in self._keys:
                     batch[key].append(example[key])
-
-            for key, maxlen in self._seq_maxlen.iteritems():
-                batch[key] = pad_sequences(
-                    sequences=batch[key],
-                    maxlen=maxlen,
-                    dtype=np.float32,
-                    padding=self._padding,
-                    truncating=self._truncating,
-                    value=0.0)
-
+            batch = self._adjust_seqlen(batch)
+            batch = Batch(batch)
+            return batch
+        elif isinstance(key, collections.Iterable):
+            # for shuffling
+            batch = {each: [] for each in self._keys}
+            for idx in key:
+                example = self._get_example(idx)
+                for key in self._keys:
+                    batch[key].append(example[key])
+            batch = self._adjust_seqlen(batch)
             batch = Batch(batch)
             return batch
         else:
             raise TypeError
+
+    def _adjust_seqlen(self, batch):
+        # pad or truncating
+        for key, maxlen in self._seq_maxlen.iteritems():
+            batch[key] = pad_sequences(
+                sequences=batch[key],
+                maxlen=maxlen,
+                dtype=np.float32,
+                padding=self._padding,
+                truncating=self._truncating,
+                value=0.0)
+        return batch
