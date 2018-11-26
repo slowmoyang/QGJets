@@ -66,7 +66,7 @@ class C10Set(BaseTreeDataset):
             x -= self._mu
             x /= self._sigma
         
-        y = [0, 1] if self._tree.label == 1 else [1, 0]
+        y = [0, 1] if self._tree.label else [1, 0]
 
         example = {
             "x": x,
