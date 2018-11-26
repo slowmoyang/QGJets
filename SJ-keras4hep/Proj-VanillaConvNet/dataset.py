@@ -66,7 +66,7 @@ class C10Set(BaseTreeDataset):
             x -= self._mu
             x /= self._sigma
         
-        y = [0, 1] if np.int64(self._tree.label) else [1, 0]
+        y = [0, 1] if self._tree.label == 1 else [1, 0]
 
         example = {
             "x": x,
@@ -82,17 +82,10 @@ class C10Set(BaseTreeDataset):
 def get_data_iter(path,
                   prep_path=None,
                   batch_size=128,
-                  fit_generator_mode=True,
-                  cycle=False,
-                  shuffle=False,
-                  drop_last=False,
-                  extra=[]):
+                  extra=[],
+                  **kwargs):
     dset = C10Set(path=path, prep_path=prep_path, extra=extra)
-    data_iter = DataIterator(dset, batch_size=batch_size,
-                             cycle=cycle,
-                             shuffle=shuffle,
-                             fit_generator_mode=fit_generator_mode,
-                             drop_last=drop_last)
+    data_iter = DataIterator(dset, batch_size=batch_size, **kwargs)
     return data_iter
 
 def _test():

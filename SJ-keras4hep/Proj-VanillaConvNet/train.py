@@ -29,6 +29,7 @@ from tensorflow.keras.utils import multi_gpu_model
 from tensorflow.keras.utils import plot_model
 
 import keras4hep as kh
+from keras4hep.data import get_class_weight
 from keras4hep.metrics import roc_auc
 from keras4hep.utils.misc import get_available_gpus
 from keras4hep.utils.misc import Directory
@@ -197,6 +198,8 @@ def main():
         batch_size=args.valid_batch_size,
         fit_generator_mode=False)
 
+    class_weight = get_class_weight(train_iter)
+    config["class_weight"] = list(class_weight)
 
     #################################
     # Build & Compile a model.
@@ -268,7 +271,8 @@ def main():
         validation_data=valid_iter,
         validation_steps=len(valid_iter),
         callbacks=callback_list,
-        shuffle=True)
+        shuffle=True,
+        class_weight=class_weight)
 
     print("Training is over! :D")
 
