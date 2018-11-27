@@ -288,8 +288,10 @@ def main():
     good_ckpt = find_good_checkpoint(
         log_dir.checkpoint.path,
         which={"max": ["auc", "acc"], "min": ["loss"]})
+
     for idx, each in enumerate(good_ckpt, 1):
         print("[{}/{}] {}".format(idx, len(good_ckpt), each))
+
         K.clear_session()
         evaluate(custom_objects={"roc_auc": roc_auc},
                  checkpoint_path=each, 
