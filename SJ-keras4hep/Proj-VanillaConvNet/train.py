@@ -143,7 +143,7 @@ def main():
     parser.add_argument("--min-pt", dest="min_pt", default=100, type=int)
     parser.add_argument("--activation", default="relu", type=str)
     parser.add_argument("--top", default="dense", type=str)
-    parser.add_argument("--filters_list", nargs="+", default=[16, 64, 32])
+    parser.add_argument("--filters_list", nargs="+", default=[16, 64, 256, 512, 64])
 
     args = parser.parse_args()
 
@@ -166,23 +166,26 @@ def main():
     ########################################
     # Load training and validation datasets
     ########################################
-    dset = get_dataset_paths(args.min_pt)
+    dset = get_dataset_paths(config.min_pt)
     config.append(dset)
 
     train_iter = get_data_iter(
-        path=dset["training"],
-        batch_size=args.batch_size,
+        path=config.training,
+        prep_path=config.preprocessing,
+        batch_size=config.batch_size,
         fit_generator_mode=True,
         drop_last=True)
 
     valid_iter = get_data_iter(
         path=dset["validation"],
-        batch_size=args.valid_batch_size,
+        prep_path=config.preprocessing,
+        batch_size=config.valid_batch_size,
         fit_generator_mode=True)
 
     test_iter = get_data_iter(
         path=dset["test"],
-        batch_size=args.valid_batch_size,
+        prep_path=config.preprocessing,
+        batch_size=config.valid_batch_size,
         fit_generator_mode=False)
 
     class_weight = get_class_weight(train_iter)
@@ -195,13 +198,13 @@ def main():
 
     model = build_a_model(
         x_shape=x_shape,
-        filters_list=args.filters_list,
-        activation=args.activation,
-        top=args.top)
+        filters_list=config.filters_list,
+        activation=config.activation,
+        top=config.top)
     config["model"] = model.get_config()
 
-    if args.multi_gpu:
-        model = multi_gpu_model(_model, gpus=args.num_gpus)
+    if config.multi_gpu:
+        model = multi_gpu_model(_model, gpus=config.num_gpus)
 
     model_plot_path = log_dir.concat("model.png")
     plot_model(model, to_file=model_plot_path, show_shapes=True)
@@ -211,11 +214,11 @@ def main():
 
     # TODO capsulisation
     optimizer_kwargs = {}
-    if args.clipnorm > 0:
-        optimzer_kwargs["clipnorm"] = args.clipnorm
-    if args.clipvalue > 0:
-        optimzer_kwargs["clipvalue"] = args.clipvalue
-    optimizer = optimizers.Adam(lr=args.lr, **optimizer_kwargs)
+    if config.clipnorm > 0:
+        optimzer_kwargs["clipnorm"] = config.clipnorm
+    if config.clipvalue > 0:
+        optimzer_kwargs["clipvalue"] = config.clipvalue
+    optimizer = optimizers.Adam(lr=config.lr, **optimizer_kwargs)
 
     metric_list = ["accuracy" , roc_auc]
 
