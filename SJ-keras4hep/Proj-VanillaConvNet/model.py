@@ -14,19 +14,19 @@ from tensorflow.keras.layers import LeakyReLU
 from keras4hep.data import DataIterator
 
 
-def conv_block(x, filters, kernel_size=5, strides=(1, 1), activation="relu"):
-    x = Conv2D(filters=filters, kernel_size=kernel_size, strides=strides)(x)
-    x = BatchNormalization(axis=1)(x)
+def conv_block(x, filters, kernel_size=5, strides=(1, 1), activation="relu", padding="valid"):
+    x = Conv2D(filters=filters, kernel_size=kernel_size, strides=strides, padding=padding)(x)
     x = Activation(activation)(x)
+    x = BatchNormalization(axis=1)(x)
     return x
 
 
 def build_a_model(x_shape, filters_list=[16, 64, 32], activation="relu", top="proj"):
     x = Input(x_shape)
 
-    h = conv_block(x, filters_list[0], kernel_size=7, strides=(2, 2), activation=activation)
-    for filters in filters_list[1:]:
-        h = conv_block(h, filters, activation=activation)
+    h = x
+    for filters in filters_list:
+        h = conv_block(h, filters, activation=activation, padding="valid")
 
     if top == "dense":
         h = Flatten()(h)
