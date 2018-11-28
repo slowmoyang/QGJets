@@ -35,6 +35,7 @@ from keras4hep.utils.misc import get_available_gpus
 from keras4hep.utils.misc import Directory
 from keras4hep.utils.misc import Config
 from keras4hep.utils.misc import find_good_checkpoint
+from keras4hep.projects.qgjets.utils import get_dataset_paths
 from keras4hep.projects.toptagging import ROCCurve 
 from keras4hep.projects.toptagging import BinaryClassifierResponse
 from keras4hep.projects.toptagging import LearningCurve
@@ -52,21 +53,7 @@ def backup_scripts(directory):
     for each in sources:
         shutil.copy2(each, directory)
 
-def get_dataset_paths(min_pt):
-    max_pt = int(min_pt * 1.1)
 
-    hostname = os.environ["HOSTNAME"]
-    if hostname == "cms05.sscc.uos.ac.kr":
-        format_str = "/store/slowmoyang/QGJets/dijet_{min_pt}_{max_pt}/dijet_{min_pt}_{max_pt}_{{ext}}.root".format(
-            min_pt=min_pt, max_pt=max_pt)
-        prep_path = "/store/slowmoyang/QGJets/dijet_{min_pt}_{max_pt}/preprocessing_dijet_{min_pt}_{max_pt}_training.npz".format(
-            min_pt=min_pt, max_pt=max_pt)
-    else:
-        raise NotImplementedError
-
-    paths = {key: format_str.format(ext=key) for key in ["training", "validation", "test"]}
-    paths["preprocessing"] = prep_path
-    return paths
 
 
 def evaluate(checkpoint_path,
