@@ -35,6 +35,7 @@ from keras4hep.utils.misc import get_available_gpus
 from keras4hep.utils.misc import Directory
 from keras4hep.utils.misc import Config
 from keras4hep.utils.misc import find_good_checkpoint
+from keras4hep.projects.qgjets.utils import get_dataset_paths
 from keras4hep.projects.toptagging import ROCCurve 
 from keras4hep.projects.toptagging import BinaryClassifierResponse
 from keras4hep.projects.toptagging import LearningCurve
@@ -55,23 +56,6 @@ def backup_scripts(directory):
         shutil.copy2(each, directory)
 
  
-
-def get_dataset_paths(min_pt):
-    max_pt = int(min_pt * 1.1)
-
-    hostname = os.environ["HOSTNAME"]
-    if hostname == "cms05.sscc.uos.ac.kr":
-        format_str = "/store/slowmoyang/QGJets/dijet_{min_pt}_{max_pt}/dijet_{min_pt}_{max_pt}_{{ext}}.root".format(
-            min_pt=min_pt, max_pt=max_pt)
-        prep_path = "/store/slowmoyang/QGJets/dijet_{min_pt}_{max_pt}/preprocessing_dijet_{min_pt}_{max_pt}_training.npz".format(
-            min_pt=min_pt, max_pt=max_pt)
-    else:
-        raise NotImplementedError
-
-    paths = {key: format_str.format(ext=key) for key in ["training", "validation", "test"]}
-    paths["preprocessing"] = prep_path
-    return paths
-
 
 def evaluate(checkpoint_path,
              train_iter,
@@ -177,7 +161,7 @@ def main():
     ########################################
     # Load training and validation datasets
     ########################################
-    dset = get_dataset_paths(args.min_pt)
+    dset = get_dataset_paths(config.min_pt)
     config.append(dset)
 
     config["seq_maxlen"] = {
@@ -191,26 +175,26 @@ def main():
 
     train_iter = get_data_iter(
         path=dset["training"],
-        batch_size=args.batch_size,
+        batch_size=config.batch_size,
         seq_maxlen=config.seq_maxlen,
         fit_generator_input=config.fit_generator_input,
         fit_generator_mode=True)
 
     valid_iter = get_data_iter(
         path=dset["validation"],
-        batch_size=args.valid_batch_size,
+        batch_size=config.valid_batch_size,
         seq_maxlen=config.seq_maxlen,
         fit_generator_input=config.fit_generator_input,
         fit_generator_mode=True)
 
     test_iter = get_data_iter(
         path=dset["test"],
-        batch_size=args.valid_batch_size,
+        batch_size=config.valid_batch_size,
         seq_maxlen=config.seq_maxlen,
         fit_generator_input=config.fit_generator_input,
         fit_generator_mode=False)
 
-    if args.use_class_weight: 
+    if config.use_class_weight: 
         class_weight = get_class_weight(train_iter)
         config["class_weight"] = list(class_weight)
     else:
@@ -228,8 +212,8 @@ def main():
     config["model"] = model.get_config()
 
 
-    if args.multi_gpu:
-        model = multi_gpu_model(_model, gpus=args.num_gpus)
+    if config.multi_gpu:
+        model = multi_gpu_model(_model, gpus=config.num_gpus)
 
     model_plot_path = log_dir.concat("model.png")
     plot_model(model, to_file=model_plot_path, show_shapes=True)
@@ -238,11 +222,11 @@ def main():
 
     # TODO capsulisation
     optimizer_kwargs = {}
-    if args.clipnorm > 0:
-        optimizer_kwargs["clipnorm"] = args.clipnorm
-    if args.clipvalue > 0:
-        optimizer_kwargs["clipvalue"] = args.clipvalue
-    optimizer = getattr(optimizers, config.optimizer)(lr=args.lr, **optimizer_kwargs)
+    if config.clipnorm > 0:
+        optimizer_kwargs["clipnorm"] = config.clipnorm
+    if config.clipvalue > 0:
+        optimizer_kwargs["clipvalue"] = config.clipvalue
+    optimizer = getattr(optimizers, config.optimizer)(lr=config.lr, **optimizer_kwargs)
 
     metric_list = ["accuracy" , roc_auc]
 
