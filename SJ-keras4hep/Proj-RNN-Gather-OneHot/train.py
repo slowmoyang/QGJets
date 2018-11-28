@@ -215,8 +215,11 @@ def main():
     if config.multi_gpu:
         model = multi_gpu_model(_model, gpus=config.num_gpus)
 
-    model_plot_path = log_dir.concat("model.png")
-    plot_model(model, to_file=model_plot_path, show_shapes=True)
+    if config.hostname == "cms05.sscc.uos.ac.kr":
+        model_plot_path = log_dir.concat("model.png")
+        plot_model(model, to_file=model_plot_path, show_shapes=True)
+    else:
+        print(model.summary())
 
     loss = 'categorical_crossentropy'
 
