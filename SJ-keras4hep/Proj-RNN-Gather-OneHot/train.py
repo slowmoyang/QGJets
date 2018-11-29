@@ -147,7 +147,7 @@ def main():
     ###################
     log_dir = Directory(path=args.log_dir)
     log_dir.mkdir("script")
-    log_dir.mkdir("model_checkpoint")
+    log_dir.mkdir("checkpoint")
     log_dir.mkdir("learning_curve")
     log_dir.mkdir("roc_curve")
     log_dir.mkdir("model_response")
@@ -247,7 +247,7 @@ def main():
     # Callbacks
     ###########################################################################
     ckpt_format_str = "weights_epoch-{epoch:02d}_loss-{val_loss:.4f}_acc-{val_acc:.4f}_auc-{val_roc_auc:.4f}.hdf5"
-    ckpt_path = log_dir.model_checkpoint.concat(ckpt_format_str)
+    ckpt_path = log_dir.checkpoint.concat(ckpt_format_str)
     csv_log_path = log_dir.concat("log_file.csv")
 
     learning_curve = LearningCurve(directory=log_dir.learning_curve.path)
@@ -287,7 +287,7 @@ def main():
     train_iter.cycle = False
 
     good_ckpt = find_good_checkpoint(
-        log_dir.model_checkpoint.path,
+        log_dir.checkpoint.path,
         which={"max": ["auc", "acc"], "min": ["loss"]})
 
     for idx, each in enumerate(good_ckpt, 1):
