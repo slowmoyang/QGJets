@@ -143,7 +143,7 @@ def main():
     parser.add_argument("--min-pt", dest="min_pt", default=100, type=int)
     parser.add_argument("--activation", default="relu", type=str)
     parser.add_argument("--top", default="dense", type=str)
-    parser.add_argument("--filters_list", nargs="+", default=[16, 64, 256, 512, 64])
+    parser.add_argument("--filters_list", nargs="+", default=[64, 256, 32])
 
     args = parser.parse_args()
 

@@ -55,6 +55,7 @@ def backup_scripts(directory):
 
 
 
+
 def evaluate(checkpoint_path,
              train_iter,
              test_iter,
@@ -116,7 +117,7 @@ def main():
 
 
     parser.add_argument("--logdir", dest="log_dir", type=str,
-                        default="./logs/{{name}}-{}".format(datetime.now().strftime("%y%m%d-%H%M%S")))
+                        default="./logs/untitled-{}".format(datetime.now().strftime("%y%m%d-%H%M%S")))
 
     parser.add_argument("--num_gpus", default=len(get_available_gpus()), type=int)
     parser.add_argument("--multi-gpu", default=False, action='store_true', dest='multi_gpu')
@@ -127,13 +128,10 @@ def main():
     parser.add_argument("--valid_batch_size", default=1024, type=int)
 
     # Optimizer
-    parser.add_argument("--optim", dest="optimizer", default="RMSprop", type=str)
     parser.add_argument("--lr", default=0.001, type=float)
     parser.add_argument("--clipnorm", default=-1, type=float,
                         help="if it is greater than 0, then graidient clipping is activated")
     parser.add_argument("--clipvalue", default=-1, type=float)
-    parser.add_argument("--use-class-weight", dest="use_class_weight",
-                        default=False, action="store_true")
 
 
     # Frequencies
@@ -143,22 +141,15 @@ def main():
 
     # Project parameters
     parser.add_argument("--min-pt", dest="min_pt", default=100, type=int)
-    parser.add_argument("--activation", default="elu", type=str)
+    parser.add_argument("--activation", default="relu", type=str)
+    parser.add_argument("--top", default="dense", type=str)
+    parser.add_argument("--filters_list", nargs="+", default=[64, 256, 32])
 
     args = parser.parse_args()
 
     ###################
     #
     ###################
-    if "{name}" in args.log_dir:
-        log_dir_name = "pt-{min_pt}_activation-{activation}_classweight-{class_weight}".format(
-            min_pt=args.min_pt,
-            activation=args.activation,
-            class_weight=args.use_class_weight)
-        args.log_dir = args.log_dir.format(name=log_dir_name)
-        
-
-
     log_dir = Directory(path=args.log_dir)
     log_dir.mkdir("script")
     log_dir.mkdir("checkpoint")
@@ -175,68 +166,60 @@ def main():
     ########################################
     # Load training and validation datasets
     ########################################
-    dset = get_dataset_paths(args.min_pt)
+    dset = get_dataset_paths(config.min_pt)
     config.append(dset)
 
     train_iter = get_data_iter(
-        path=dset["training"],
-        batch_size=args.batch_size,
+        path=config.training,
+        prep_path=config.preprocessing,
+        batch_size=config.batch_size,
         fit_generator_mode=True,
         drop_last=True)
 
     valid_iter = get_data_iter(
         path=dset["validation"],
-        batch_size=args.valid_batch_size,
+        prep_path=config.preprocessing,
+        batch_size=config.valid_batch_size,
         fit_generator_mode=True)
 
     test_iter = get_data_iter(
         path=dset["test"],
-        batch_size=args.valid_batch_size,
+        prep_path=config.preprocessing,
+        batch_size=config.valid_batch_size,
         fit_generator_mode=False)
 
-    # NOTE Optional dictionary mapping class indices (integers) to a weight
-    # (float) value, used for weighting the loss function (during training
-    # only). This can be useful to tell the model to "pay more attention" to
-    # samples from an under-represented class. 
-    if args.use_class_weight: 
-        class_weight = get_class_weight(train_iter)
-        config["class_weight"] = list(class_weight)
-    else:
-        class_weight = None
+    class_weight = get_class_weight(train_iter)
+    config["class_weight"] = list(class_weight)
 
     #################################
     # Build & Compile a model.
     #################################
     x_shape = train_iter.get_shape("x", batch_shape=False)
 
-    model = build_a_model(
-        x_shape=x_shape,
-        activation=args.activation)
-
+    model = build_a_model(x_shape)
     config["model"] = model.get_config()
 
-    if args.multi_gpu:
-        model = multi_gpu_model(_model, gpus=args.num_gpus)
+    if config.multi_gpu:
+        model = multi_gpu_model(_model, gpus=config.num_gpus)
 
-    # plot model
     model_plot_path = log_dir.concat("model.png")
     plot_model(model, to_file=model_plot_path, show_shapes=True)
 
-    # compile
+    # TODO args should have these information.
     loss = 'categorical_crossentropy'
-
 
     # TODO capsulisation
     optimizer_kwargs = {}
     if config.clipnorm > 0:
-        optimizer_kwargs["clipnorm"] = config.clipnorm
+        optimzer_kwargs["clipnorm"] = config.clipnorm
     if config.clipvalue > 0:
-        optimizer_kwargs["clipvalue"] = config.clipvalue
-    optimizer = getattr(optimizers, config.optimizer)(lr=config.lr, **optimizer_kwargs)
+        optimzer_kwargs["clipvalue"] = config.clipvalue
+    optimizer = optimizers.Adam(lr=config.lr, **optimizer_kwargs)
 
     metric_list = ["accuracy" , roc_auc]
 
     config["loss"] = loss
+    config["optimizer"] = "Adam"
     config["optimizer_config"] = optimizer.get_config()
 
     model.compile(
@@ -257,7 +240,7 @@ def main():
     learning_curve.book(x="step", y="loss", best="min")
 
     callback_list = [
-        callbacks.ModelCheckpoint(filepath=ckpt_path, monitor="loss"),
+        callbacks.ModelCheckpoint(filepath=ckpt_path),
         callbacks.EarlyStopping(monitor="val_loss" , patience=5),
         callbacks.ReduceLROnPlateau(),
         callbacks.CSVLogger(csv_log_path),
@@ -283,7 +266,7 @@ def main():
     K.clear_session()
 
     ###########################################
-    # Evaluation
+    #
     ############################################
     train_iter.fit_generator_mode = False
     train_iter.cycle = False
@@ -291,8 +274,10 @@ def main():
     good_ckpt = find_good_checkpoint(
         log_dir.checkpoint.path,
         which={"max": ["auc", "acc"], "min": ["loss"]})
+
     for idx, each in enumerate(good_ckpt, 1):
         print("[{}/{}] {}".format(idx, len(good_ckpt), each))
+
         K.clear_session()
         evaluate(custom_objects={"roc_auc": roc_auc},
                  checkpoint_path=each, 
