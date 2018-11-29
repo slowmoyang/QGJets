@@ -23,8 +23,8 @@ def dense_block(x, units, activation="relu"):
 def build_a_model(x_shape, activation="elu"):
     x = Input(x_shape)
 
-    h = dense_block(x, 16, activation=activation)
-    h = dense_block(h, 64, activation=activation)
+    h = dense_block(x, 64, activation=activation)
+    h = dense_block(h, 128, activation=activation)
     h = dense_block(h, 32, activation=activation)
     logits = Dense(units=2)(h)
     y = Activation("softmax")(logits)

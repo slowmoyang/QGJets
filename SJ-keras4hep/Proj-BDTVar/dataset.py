@@ -28,14 +28,26 @@ class BDTVarSet(BaseTreeDataset):
             keys=keys)
 
         self._extra = extra
-        self._features = ["pt", "eta", "ptd", "major_axis", "minor_axis",
-                          "chad_mult", "nhad_mult", "photon_mult",
-                          "electron_mult", "muon_mult"]
+#         self._features = ["pt", "eta", "ptd", "major_axis", "minor_axis",
+#                           "chad_mult", "nhad_mult", "photon_mult",
+#                           "electron_mult", "muon_mult"]
 
     def _get_example(self, idx):
         self._tree.GetEntry(idx)
 
-        x = [getattr(self._tree, each) for each in self._features]
+        # x = [getattr(self._tree, each) for each in self._features]
+        charged_mult = sum(getattr(self._tree, each) for each in ["chad_mult", "electron_mult", "muon_mult"])
+        neutral_mult = sum(getattr(self._tree, each) for each in ["nhad_mult", "photon_mult"])
+
+        x = [
+            self._tree.ptd,
+            self._tree.major_axis,
+            self._tree.minor_axis,
+            charged_mult,
+            neutral_mult
+        ]
+
+
         x = np.array(x, dtype=np.float32)
         
         y = [0, 1] if self._tree.label else [1, 0]

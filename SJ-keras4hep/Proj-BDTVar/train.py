@@ -35,6 +35,7 @@ from keras4hep.utils.misc import get_available_gpus
 from keras4hep.utils.misc import Directory
 from keras4hep.utils.misc import Config
 from keras4hep.utils.misc import find_good_checkpoint
+from keras4hep.projects.qgjets.utils import get_dataset_paths
 from keras4hep.projects.toptagging import ROCCurve 
 from keras4hep.projects.toptagging import BinaryClassifierResponse
 from keras4hep.projects.toptagging import LearningCurve
@@ -52,21 +53,6 @@ def backup_scripts(directory):
     for each in sources:
         shutil.copy2(each, directory)
 
-def get_dataset_paths(min_pt):
-    max_pt = int(min_pt * 1.1)
-
-    hostname = os.environ["HOSTNAME"]
-    if hostname == "cms05.sscc.uos.ac.kr":
-        format_str = "/store/slowmoyang/QGJets/dijet_{min_pt}_{max_pt}/dijet_{min_pt}_{max_pt}_{{ext}}.root".format(
-            min_pt=min_pt, max_pt=max_pt)
-        prep_path = "/store/slowmoyang/QGJets/dijet_{min_pt}_{max_pt}/preprocessing_dijet_{min_pt}_{max_pt}_training.npz".format(
-            min_pt=min_pt, max_pt=max_pt)
-    else:
-        raise NotImplementedError
-
-    paths = {key: format_str.format(ext=key) for key in ["training", "validation", "test"]}
-    paths["preprocessing"] = prep_path
-    return paths
 
 
 def evaluate(checkpoint_path,
@@ -141,6 +127,7 @@ def main():
     parser.add_argument("--valid_batch_size", default=1024, type=int)
 
     # Optimizer
+    parser.add_argument("--optim", dest="optimizer", default="RMSprop", type=str)
     parser.add_argument("--lr", default=0.001, type=float)
     parser.add_argument("--clipnorm", default=-1, type=float,
                         help="if it is greater than 0, then graidient clipping is activated")
@@ -156,7 +143,7 @@ def main():
 
     # Project parameters
     parser.add_argument("--min-pt", dest="min_pt", default=100, type=int)
-    parser.add_argument("--activation", default="relu", type=str)
+    parser.add_argument("--activation", default="elu", type=str)
 
     args = parser.parse_args()
 
@@ -238,18 +225,18 @@ def main():
     # compile
     loss = 'categorical_crossentropy'
 
+
     # TODO capsulisation
     optimizer_kwargs = {}
-    if args.clipnorm > 0:
-        optimzer_kwargs["clipnorm"] = args.clipnorm
-    if args.clipvalue > 0:
-        optimzer_kwargs["clipvalue"] = args.clipvalue
-    optimizer = optimizers.Adam(lr=args.lr, **optimizer_kwargs)
+    if config.clipnorm > 0:
+        optimizer_kwargs["clipnorm"] = config.clipnorm
+    if config.clipvalue > 0:
+        optimizer_kwargs["clipvalue"] = config.clipvalue
+    optimizer = getattr(optimizers, config.optimizer)(lr=config.lr, **optimizer_kwargs)
 
     metric_list = ["accuracy" , roc_auc]
 
     config["loss"] = loss
-    config["optimizer"] = "Adam"
     config["optimizer_config"] = optimizer.get_config()
 
     model.compile(
