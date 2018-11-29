@@ -37,6 +37,7 @@ class JetSeqSet(BaseTreeDataset):
 
         # Constituents
         pt = np.array(self._tree.dau_pt, dtype=np.float32)
+        rel_pt = pt / self._tree.pt
         deta = np.array(self._tree.dau_deta, dtype=np.float32)
         dphi = np.array(self._tree.dau_dphi, dtype=np.float32)
         charge = np.array(self._tree.dau_charge, dtype=np.float32)
@@ -51,7 +52,7 @@ class JetSeqSet(BaseTreeDataset):
         is_chad = np.logical_not(is_not_chad)
 
         x = [
-            pt,
+            rel_pt,
             deta,
             dphi,
             charge,

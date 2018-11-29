@@ -123,7 +123,7 @@ def main():
     parser.add_argument("--batch_size", default=128, type=int)
     parser.add_argument("--valid_batch_size", default=1024, type=int)
 
-    parser.add_argument("--optimizer", default="adam", type=str)
+    parser.add_argument("--optimizer", default="RMSprop", type=str)
     parser.add_argument("--lr", default=0.001, type=float)
     parser.add_argument("--clipnorm", default=-1, type=float,
                         help="if it is greater than 0, then graidient clipping is activated")

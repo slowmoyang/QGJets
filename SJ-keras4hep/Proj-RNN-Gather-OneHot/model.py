@@ -13,9 +13,9 @@ def conv1d_block(x, filters, kernel_size=1, strides=1, activation="elu"):
 
 
 def dense_block(x, units, activation="elu"):
+    x = BatchNormalization(axis=-1)(x)
     x = Dense(units)(x)
     x = Activation(activation)(x)
-    x = BatchNormalization(axis=-1)(x)
     return x
 
 
@@ -37,19 +37,19 @@ def gather(args):
     return tf.gather_nd(seq, indices)
 
     
-
-
 def build_a_model(x_shape):
     x = Input(x_shape)
     x_len = Input(batch_shape=(None,1), dtype=tf.int32)
 
+
+    h = conv1d_block(x, filters=32, activation="elu")
     # h = SpatialDropout1D(rate=0.8)(x)
-    # h = Bidirectional(LSTM(units=512, return_sequences=True))(h)
-    h = LSTM(units=512, return_sequences=True)(x)
+    h = Bidirectional(LSTM(units=512, return_sequences=True))(h)
+    h = GRU(units=128, return_sequences=True)(h)
     h = Lambda(gather)([h, x_len])
-    h = dense_block(h, 128)
     h = dense_block(h, 64)
     h = dense_block(h, 16)
+    h = Dropout(0.5)(h)
     logits = Dense(units=2)(h)
     y = Activation("softmax")(logits)
 
