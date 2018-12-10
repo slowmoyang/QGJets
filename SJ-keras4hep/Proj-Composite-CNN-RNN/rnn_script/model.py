@@ -107,14 +107,14 @@ def build_model(x_kin_shape,
 
 
 def get_custom_objects():
-    # from tensorflow.python.ops.init_ops import glorot_uniform_initializer
+    from tensorflow.python.ops.init_ops import glorot_uniform_initializer
     from keras4hep.metrics import roc_auc
 
     custom_objects = {
         "Gather": Gather,
         "tf": tf,
-        # "GlorotUniform": glorot_uniform_initializer,
-        "GlorotUniform": keras.initializers.glorot_uniform,
+        "GlorotUniform": glorot_uniform_initializer,
+        # "GlorotUniform": keras.initializers.glorot_uniform,
         "roc_auc": roc_auc
     }
     return custom_objects

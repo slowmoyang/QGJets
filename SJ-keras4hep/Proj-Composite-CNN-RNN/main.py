@@ -180,21 +180,37 @@ def main():
     cnn_custom_objects = get_cnn_custom_objects()
     rnn_custom_objects = get_rnn_custom_objects()
 
+    custom_objects = {}
+    custom_objects.update(cnn_custom_objects)
+    custom_objects.update(rnn_custom_objects)
+
     cnn = load_model(cnn_path, custom_objects=cnn_custom_objects)
+    cnn.summary()
+    print("\n"*5)
+
     rnn = load_model(rnn_path, custom_objects=rnn_custom_objects)
+    rnn.summary()
+    print("\n"*5)
 
     ######################################
     # Build
     ######################################
     inputs = cnn.inputs + rnn.inputs
 
+    # cnn_last_hidden = cnn.get_layer("cnn_conv2d_3").output
+    # rnn_last_hidden = rnn.get_layer("rnn_dense_5").output
+    # cnn_flatten = Flatten()(cnn_last_hidden)
+    # joint = Concatenate(axis=-1)([cnn_flatten, rnn_last_hidden])
+
     cnn_last_hidden = cnn.get_layer("cnn_batch_norm_2").output
     rnn_last_hidden = rnn.get_layer("rnn_dense_5").output
 
-    cnn_flatten = Flatten()(cnn_last_hidden)
-
+    cnn_gap = GlobalAveragePooling2D()(cnn_last_hidden)
+    cnn_flatten = Flatten()(cnn_gap)
     joint = Concatenate(axis=-1)([cnn_flatten, rnn_last_hidden])
-
+    joint = BatchNormalization(axis=-1, name="joint_batch_norm")(joint)
+    joint = Dense(128)(joint)
+    joint = Activation("relu")(joint)
     logits = Dense(2)(joint)
 
     y_pred = Softmax()(logits)
