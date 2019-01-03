@@ -50,7 +50,6 @@ def evaluate(checkpoint_path,
              train_iter,
              test_iter,
              log_dir):
-
     model = load_model(checkpoint_path)
 
     ckpt_name = os.path.basename(checkpoint_path).replace(".hdf5", "")
@@ -75,7 +74,7 @@ def evaluate(checkpoint_path,
     print("TRAINING SET")
     for batch_idx, batch in enumerate(train_iter, 1):
 
-        y_score = model.predict_on_batch([batch.x])
+        y_score = model.predict_on_batch([batch.x_kin, batch.x_pid])
         model_response.append(is_train=True,
                               y_true=batch.y,
                               y_score=y_score)
@@ -86,7 +85,7 @@ def evaluate(checkpoint_path,
     print("TEST SET")
     for batch_idx, batch in enumerate(test_iter, 1):
 
-        y_score = model.predict_on_batch([batch.x])
+        y_score = model.predict_on_batch([batch.x_kin, batch.x_pid])
         model_response.append(is_train=False,
                               y_true=batch.y,
                               y_score=y_score)
@@ -99,7 +98,7 @@ def evaluate(checkpoint_path,
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--name", default="mlp{}".format(datetime.now().strftime("%y%m%d%H%M%S")))
+    parser.add_argument("--name", default="rnn{}".format(datetime.now().strftime("%y%m%d%H%M%S")))
     parser.add_argument("--directory", default="./logs")
 
     # GPU
@@ -130,14 +129,13 @@ def main():
 
     # Model Archtecture
     parser.add_argument("--act", dest="activation", default="elu", type=str)
-    parser.add_argument("--full-info", dest="full_info", action="store_true")
+    parser.add_argument("--rnn", default="gru", type=str)
 
     args = parser.parse_args()
 
     ###################
     #
     ###################
-
     log_dir = Directory(path=os.path.join(args.directory, args.name))
     log_dir.mkdir("script")
     log_dir.mkdir("checkpoint")
@@ -167,22 +165,27 @@ def main():
     dset = get_dataset_paths(config.min_pt)
     config.append(dset)
 
+    config["seq_maxlen"] = {
+        "x_kin": 30,
+        "x_pid": 30
+    }
+
     train_iter = get_data_iter(
         path=dset["training"],
         batch_size=config.batch_size,
-        full_info=config.full_info,
+        seq_maxlen=config.seq_maxlen,
         fit_generator_mode=True)
 
     valid_iter = get_data_iter(
         path=dset["validation"],
         batch_size=config.valid_batch_size,
-        full_info=config.full_info,
+        seq_maxlen=config.seq_maxlen,
         fit_generator_mode=True)
 
     test_iter = get_data_iter(
         path=dset["test"],
         batch_size=config.valid_batch_size,
-        full_info=config.full_info,
+        seq_maxlen=config.seq_maxlen,
         fit_generator_mode=False)
 
     if config.use_class_weight: 
@@ -195,10 +198,13 @@ def main():
     #################################
     # Build & Compile a model.
     #################################
-    x_shape = train_iter.get_shape("x", batch_shape=False)
+    x_kin_shape = train_iter.get_shape("x_kin", batch_shape=False)
+    x_pid_shape = train_iter.get_shape("x_pid", batch_shape=False)
 
     model = build_model(
-        x_shape,
+        x_kin_shape,
+        x_pid_shape,
+        rnn=config.rnn,
         activation=config.activation,
         name=config.name)
 

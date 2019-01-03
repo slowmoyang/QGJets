@@ -43,17 +43,14 @@ from keras4hep.utils.misc import parse_str
 
 from dataset import get_data_iter
 from model import build_model
-from model import get_custom_objects
-
 
 
 def evaluate(checkpoint_path,
              train_iter,
              test_iter,
-             log_dir,
-             custom_objects={}):
+             log_dir):
 
-    model = load_model(checkpoint_path, custom_objects=custom_objects)
+    model = load_model(checkpoint_path)
 
     ckpt_name = os.path.basename(checkpoint_path).replace(".hdf5", "")
     epoch = parse_str(ckpt_name, target="epoch")
@@ -132,6 +129,7 @@ def main():
 
     # Model Archtecture
     parser.add_argument("--act", dest="activation", default="elu", type=str)
+    parser.add_argument("--rnn", default="gru", type=str)
 
     args = parser.parse_args()
 
@@ -206,10 +204,9 @@ def main():
     model = build_model(
         x_kin_shape,
         x_pid_shape,
+        rnn=config.rnn,
         activation=config.activation,
         name=config.name)
-
-    custom_objects = get_custom_objects()
 
     config["model"] = model.get_config()
 
@@ -239,8 +236,6 @@ def main():
         loss=loss,
         optimizer=optimizer,
         metrics=metric_list)
-
-    custom_objects["roc_auc"] = roc_auc
 
     config["loss"] = loss
     config["optimizer_config"] = optimizer.get_config()
@@ -302,8 +297,7 @@ def main():
         print("[{}/{}] {}".format(idx, len(good_ckpt), each))
 
         K.clear_session()
-        evaluate(custom_objects=custom_objects,
-                 checkpoint_path=each, 
+        evaluate(checkpoint_path=each, 
                  train_iter=train_iter,
                  test_iter=test_iter,
                  log_dir=log_dir)
