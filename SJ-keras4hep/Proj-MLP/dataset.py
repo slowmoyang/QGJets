@@ -10,7 +10,11 @@ from keras4hep.data import DataIterator
 
 
 class BDTVarSet(BaseTreeDataset):
-    def __init__(self, path, extra=None, tree_name="jetAnalyser"):
+    def __init__(self,
+                 path,
+                 full_info=False,
+                 extra=None,
+                 tree_name="jetAnalyser"):
         """
         Arguments
           - path: A str. A path to a root file.
@@ -28,24 +32,27 @@ class BDTVarSet(BaseTreeDataset):
             keys=keys)
 
         self._extra = extra
-#         self._features = ["pt", "eta", "ptd", "major_axis", "minor_axis",
-#                           "chad_mult", "nhad_mult", "photon_mult",
-#                           "electron_mult", "muon_mult"]
+        self._features = ["pt", "eta", "ptd", "major_axis", "minor_axis",
+                          "chad_mult", "nhad_mult", "photon_mult",
+                          "electron_mult", "muon_mult"]
+        self._full_info = full_info
 
     def _get_example(self, idx):
         self._tree.GetEntry(idx)
 
-        # x = [getattr(self._tree, each) for each in self._features]
-        charged_mult = sum(getattr(self._tree, each) for each in ["chad_mult", "electron_mult", "muon_mult"])
-        neutral_mult = sum(getattr(self._tree, each) for each in ["nhad_mult", "photon_mult"])
+        if self._full_info:
+            x = [getattr(self._tree, each) for each in self._features]
+        else:
+            charged_mult = sum(getattr(self._tree, each) for each in ["chad_mult", "electron_mult", "muon_mult"])
+            neutral_mult = sum(getattr(self._tree, each) for each in ["nhad_mult", "photon_mult"])
 
-        x = [
-            self._tree.ptd,
-            self._tree.major_axis,
-            self._tree.minor_axis,
-            charged_mult,
-            neutral_mult
-        ]
+            x = [
+                self._tree.ptd,
+                self._tree.major_axis,
+                self._tree.minor_axis,
+                charged_mult,
+                neutral_mult
+            ]
 
 
         x = np.array(x, dtype=np.float32)
@@ -66,9 +73,10 @@ class BDTVarSet(BaseTreeDataset):
 
 def get_data_iter(path,
                   batch_size=128,
+                  full_info=False,
                   extra=[],
                   **kwargs):
-    dset = BDTVarSet(path=path, extra=extra)
+    dset = BDTVarSet(path=path, full_info=full_info, extra=extra)
     data_iter = DataIterator(dset, batch_size=batch_size, **kwargs)
     return data_iter
 
